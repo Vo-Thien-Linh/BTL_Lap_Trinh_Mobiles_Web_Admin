@@ -1,0 +1,293 @@
+@model Web_Admin_Booking_App.Models.PaymentsIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quản lý Thanh toán";
+}
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Quản lý Thanh toán</div>
+        <div class="text-secondary">Theo dõi và quản lý các giao dịch tài chính của bệnh viện</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary">Xuất báo cáo</button>
+        <button type="button" class="btn btn-primary">+ Thu tiền dịch vụ</button>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Tổng doanh thu</div>
+                        <div class="stat-card__value">@Vnd(Model.TotalRevenue)</div>
+                        <div class="stat-card__hint text-danger">+@Model.TotalRevenueChangePercent.ToString("0.#")%</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--primary" aria-hidden="true">
+                        @IconCard()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Giao dịch thành công</div>
+                        <div class="stat-card__value">@Model.SuccessfulToday</div>
+                        <div class="stat-card__hint text-secondary">Hôm nay</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--secondary" aria-hidden="true">
+                        @IconCheckCircle()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Giao dịch chờ xử lý</div>
+                        <div class="stat-card__value">@Model.PendingCount</div>
+                        <div class="stat-card__hint text-danger">@Model.PendingNeedsApprovalCount cần duyệt</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--danger" aria-hidden="true">
+                        @IconClock()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card panel-card mb-3">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="text-secondary small">Thời gian:</div>
+                <select class="form-select form-select-sm admin-inline-select" style="width: 140px;">
+                    <option selected>@Model.PeriodLabel</option>
+                    <option>Hôm nay</option>
+                    <option>30 ngày qua</option>
+                </select>
+
+                <div class="text-secondary small ms-2">Trạng thái:</div>
+                <div class="admin-chip-group" role="group" aria-label="Trạng thái">
+                    <button type="button" class="btn btn-sm btn-primary">Tất cả</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Đã thanh toán</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Chờ xử lý</button>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Bộ lọc">
+                    @IconFilter()
+                </button>
+                <button type="button" class="btn btn-sm btn-light" aria-label="Chế độ xem">
+                    @IconGrid()
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 140px;">Mã hóa đơn</th>
+                        <th style="min-width: 220px;">Bệnh nhân</th>
+                        <th>Dịch vụ</th>
+                        <th>Số tiền</th>
+                        <th>Ngày thanh toán</th>
+                        <th>Phương thức</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end"> </th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var t in Model.Transactions)
+                {
+                    <tr>
+                        <td>
+                            <a href="#" class="admin-link">@t.InvoiceCode</a>
+                        </td>
+                        <td>
+                            <div class="person-cell">
+                                <div class="avatar">@Initials(t.PatientName)</div>
+                                <div>
+                                    <div class="fw-semibold">@t.PatientName</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>@t.ServiceName</td>
+                        <td class="fw-semibold">@Vnd(t.AmountVnd)</td>
+                        <td>
+                            <div class="fw-semibold">@t.PaidAt.ToString("dd/MM/yyyy")</div>
+                            <div class="text-secondary small">@t.PaidAt.ToString("HH:mm")</div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-secondary">@MethodText(t.Method)</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="admin-pill @StatusClass(t.Status)">@StatusText(t.Status)</span>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-light" aria-label="Tùy chọn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <circle cx="6" cy="12" r="1.6" />
+                                    <circle cx="12" cy="12" r="1.6" />
+                                    <circle cx="18" cy="12" r="1.6" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
+            <div class="text-secondary small">Hiển thị 1 - @Model.Transactions.Count trong tổng số @Model.SuccessfulToday giao dịch</div>
+            <nav aria-label="Phân trang">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item disabled"><a class="page-link" href="#">…</a></li>
+                    <li class="page-item"><a class="page-link" href="#" aria-label="Sau">›</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-3">
+    <div class="col-lg-6">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold">Cơ cấu phương thức thanh toán</div>
+                    <a class="admin-link" href="#" aria-label="Mở">@IconExternal()</a>
+                </div>
+                <div class="admin-chart-box mt-3">
+                    <div class="admin-chart-placeholder">
+                        <div class="admin-chart-placeholder__dot"></div>
+                        <div class="text-secondary small">Thẻ tín dụng dẫn đầu (40%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold">Biến động doanh thu (7 ngày)</div>
+                    <a class="admin-link" href="#" aria-label="Mở">@IconExternal()</a>
+                </div>
+                <div class="admin-chart-box mt-3 p-2">
+                    <svg viewBox="0 0 700 260" width="100%" height="100%" role="img" aria-label="Biểu đồ doanh thu">
+                        <rect x="0" y="0" width="700" height="260" fill="transparent" />
+                        <line x1="40" y1="220" x2="680" y2="220" stroke="rgba(0,0,0,0.15)" />
+                        <g fill="var(--bs-primary)">
+                            <rect x="70" y="110" width="55" height="110" rx="8" />
+                            <rect x="160" y="130" width="55" height="90" rx="8" opacity="0.85" />
+                            <rect x="250" y="95" width="55" height="125" rx="8" />
+                            <rect x="340" y="160" width="55" height="60" rx="8" opacity="0.85" />
+                            <rect x="430" y="70" width="55" height="150" rx="8" />
+                            <rect x="520" y="135" width="55" height="85" rx="8" opacity="0.85" />
+                            <rect x="610" y="115" width="55" height="105" rx="8" />
+                        </g>
+                        <g font-size="12" fill="rgba(0,0,0,0.55)">
+                            <text x="88" y="245">T2</text>
+                            <text x="178" y="245">T3</text>
+                            <text x="268" y="245">T4</text>
+                            <text x="358" y="245">T5</text>
+                            <text x="448" y="245">T6</text>
+                            <text x="538" y="245">T7</text>
+                            <text x="628" y="245">CN</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "";
+        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
+        var first = parts[0].Substring(0, 1).ToUpperInvariant();
+        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
+        return first + last;
+    }
+
+    private static string Vnd(decimal amount)
+    {
+        var v = string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}", amount);
+        return v + " đ";
+    }
+
+    private static string MethodText(Web_Admin_Booking_App.Models.PaymentMethod method) => method switch
+    {
+        Web_Admin_Booking_App.Models.PaymentMethod.CreditCard => "Thẻ tín dụng",
+        Web_Admin_Booking_App.Models.PaymentMethod.AtmCard => "Thẻ ATM",
+        Web_Admin_Booking_App.Models.PaymentMethod.Cash => "Tiền mặt",
+        Web_Admin_Booking_App.Models.PaymentMethod.BankTransfer => "Chuyển khoản",
+        Web_Admin_Booking_App.Models.PaymentMethod.MoMo => "MoMo",
+        _ => "-"
+    };
+
+    private static string StatusText(Web_Admin_Booking_App.Models.TransactionStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.TransactionStatus.Paid => "Đã thanh toán",
+        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "Chờ thanh toán",
+        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "Đã hoàn tiền",
+        _ => "-"
+    };
+
+    private static string StatusClass(Web_Admin_Booking_App.Models.TransactionStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.TransactionStatus.Paid => "admin-pill--paid",
+        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "admin-pill--pending",
+        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "admin-pill--failed",
+        _ => "admin-pill--paused"
+    };
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconFilter() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4 6h16M7 12h10M10 18h4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconGrid() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z\" fill=\"currentColor\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconExternal() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M14 5h5v5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M10 14 19 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M19 14v5H5V5h5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconCard() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"3\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M4 10h16\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M8 15h4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconCheckCircle() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.2 12.6 7.4 10.8\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"m9.2 12.6 7.4-7.4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconClock() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M12 7v6l4 2\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>");
+}

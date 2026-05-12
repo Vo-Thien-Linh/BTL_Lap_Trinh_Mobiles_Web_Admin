@@ -1,0 +1,94 @@
+@model IReadOnlyList<Web_Admin_Booking_App.Models.DoctorListItemViewModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Bác sĩ";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Danh sách bác sĩ</div>
+        <div class="text-secondary">Quản lý thông tin và trạng thái làm việc</div>
+    </div>
+    <a class="btn btn-primary" asp-controller="Doctors" asp-action="Create">Thêm bác sĩ</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <input class="form-control" type="search" placeholder="Tìm theo tên bác sĩ, chuyên khoa..." />
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <span class="text-secondary small">Tổng: @Model.Count bác sĩ</span>
+            </div>
+        </div>
+
+        <div class="table-responsive mt-3">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 240px;">Bác sĩ</th>
+                        <th>Chuyên khoa</th>
+                        <th>Số điện thoại</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="person-cell">
+                                <div class="avatar">@Initials(d.FullName)</div>
+                                <div>
+                                    <div class="fw-semibold">@d.FullName</div>
+                                    <div class="text-secondary small">Mã: #@d.Id</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary">@d.Department</td>
+                        <td>@d.Phone</td>
+                        <td>
+                            @{
+                                var badge = d.Status switch
+                                {
+                                    "Đang trực" => "text-bg-primary",
+                                    "Đang khám" => "text-bg-warning",
+                                    "Nghỉ" => "text-bg-secondary",
+                                    _ => "text-bg-light"
+                                };
+                            }
+                            <span class="badge @badge">@d.Status</span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-light" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">Xem</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "";
+        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
+        var first = parts[0].Substring(0, 1).ToUpperInvariant();
+        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
+        return first + last;
+    }
+}

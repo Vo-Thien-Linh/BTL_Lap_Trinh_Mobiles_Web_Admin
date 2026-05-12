@@ -1,0 +1,224 @@
+@model Web_Admin_Booking_App.Models.WorkShiftsIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quản lý Ca làm việc";
+    var isCalendar = string.Equals(Model.Mode, "calendar", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Quản lý Ca làm việc</div>
+        <div class="text-secondary">Theo dõi và điều phối nhân sự trực tuần @Model.RangeLabel</div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group" role="group" aria-label="Chế độ xem">
+            <a class="btn btn-sm @(isCalendar ? "btn-primary" : "btn-outline-secondary")" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar">Lịch</a>
+            <a class="btn btn-sm @(!isCalendar ? "btn-primary" : "btn-outline-secondary")" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="list">Danh sách</a>
+        </div>
+        <button type="button" class="btn btn-primary">Sắp xếp ca làm việc</button>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label">Tổng nhân sự</div>
+                        <div class="stat-card__value">@Model.TotalDoctorsLabel</div>
+                        <div class="stat-card__hint text-secondary">Tuần này</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--primary" aria-hidden="true">@IconUsers()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label">Ca chưa phân bổ</div>
+                        <div class="stat-card__value">@Model.UnassignedCount.ToString("00") Ca</div>
+                        <div class="stat-card__hint text-secondary">Đang chờ</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--danger" aria-hidden="true">@IconClipboard()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label">Tỷ lệ lấp đầy</div>
+                        <div class="stat-card__value">@Model.FillRatePercent.ToString("0.#")%</div>
+                        <div class="stat-card__hint text-secondary">Hoàn thành</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--secondary" aria-hidden="true">@IconCheck()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label">Ca trực trùng</div>
+                        <div class="stat-card__value">@Model.ConflictCount.ToString("00") Ca</div>
+                        <div class="stat-card__hint text-secondary">Cảnh báo</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--danger" aria-hidden="true">@IconWarning()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isCalendar)
+{
+    <div class="card panel-card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-light" aria-label="Tháng trước">‹</button>
+                    <div class="fw-semibold">@Model.MonthLabel</div>
+                    <button type="button" class="btn btn-sm btn-light" aria-label="Tháng sau">›</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2">Hôm nay</button>
+                </div>
+
+                <div class="admin-legend">
+                    <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--morning"></span>Ca Sáng</span>
+                    <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--afternoon"></span>Ca Chiều</span>
+                    <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--night"></span>Ca Tối</span>
+                </div>
+            </div>
+
+            <div class="admin-calendar">
+                <div class="admin-calendar__head">
+                    <div>Thứ 2</div><div>Thứ 3</div><div>Thứ 4</div><div>Thứ 5</div><div>Thứ 6</div><div class="is-weekend">Thứ 7</div><div class="is-weekend">Chủ Nhật</div>
+                </div>
+
+                <div class="admin-calendar__grid">
+                    @foreach (var w in Model.Calendar.Weeks)
+                    {
+                        foreach (var d in w.Days)
+                        {
+                            var cellClass = "admin-cal-cell" + (d.IsInCurrentMonth ? "" : " is-out") + (d.IsToday ? " is-today" : "");
+                            <div class="@cellClass">
+                                <div class="admin-cal-cell__date">@d.Date.Day</div>
+                                <div class="admin-cal-cell__events">
+                                    @foreach (var e in d.Events)
+                                    {
+                                        <div class="admin-shift @ShiftClass(e.Type)">
+                                            <div class="admin-shift__title">@e.Title</div>
+                                            @if (!string.IsNullOrWhiteSpace(e.Subtitle))
+                                            {
+                                                <div class="admin-shift__sub">@e.Subtitle</div>
+                                            }
+                                        </div>
+                                    }
+                                    @if (d.IsInCurrentMonth && d.Events.Count == 0 && d.Date.Day % 6 == 0)
+                                    {
+                                        <div class="admin-shift admin-shift--ghost">+ Thêm ca trực</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card panel-card">
+    <div class="card-body position-relative">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-semibold">@Model.TodayLabel</div>
+            <a class="text-decoration-none" href="#">Xem tất cả</a>
+        </div>
+
+        <div class="table-responsive mt-3">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 220px;">Bác sĩ</th>
+                        <th>Khoa</th>
+                        <th>Ca trực</th>
+                        <th>Phòng</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model.TodayAssignments)
+                {
+                    <tr>
+                        <td>
+                            <div class="person-cell">
+                                <div class="avatar">@a.Initial</div>
+                                <div>
+                                    <div class="fw-semibold">@a.DoctorName</div>
+                                    <div class="text-secondary small">@a.DoctorTitle</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary">@a.Specialty</td>
+                        <td><span class="admin-pill admin-pill--active">@a.ShiftLabel</span></td>
+                        <td>@a.Room</td>
+                        <td>
+                            <span class="badge @(a.Status == Web_Admin_Booking_App.Models.AssignmentStatus.Assigned ? "text-bg-success" : "text-bg-secondary")">
+                                @(a.Status == Web_Admin_Booking_App.Models.AssignmentStatus.Assigned ? "Đã nhận ca" : "Chưa đến giờ")
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-light" aria-label="Tùy chọn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <circle cx="6" cy="12" r="1.6" />
+                                    <circle cx="12" cy="12" r="1.6" />
+                                    <circle cx="18" cy="12" r="1.6" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <button type="button" class="btn btn-primary admin-float-tool" aria-label="Tác vụ nhanh">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M7 3h7l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 10v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M9 13h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+@functions {
+    private static string ShiftClass(Web_Admin_Booking_App.Models.ShiftType type) => type switch
+    {
+        Web_Admin_Booking_App.Models.ShiftType.Morning => "admin-shift--morning",
+        Web_Admin_Booking_App.Models.ShiftType.Afternoon => "admin-shift--afternoon",
+        Web_Admin_Booking_App.Models.ShiftType.Night => "admin-shift--night",
+        _ => "admin-shift--morning"
+    };
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconUsers() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Z\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M4 20a8 8 0 0 1 16 0\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconClipboard() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9 4h6l1 2h3v15H5V6h3l1-2Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M9 10h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M9 14h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconCheck() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20 6 9 17l-5-5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconWarning() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 9v5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M12 17h.01\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"/><path d=\"M10.2 4.8 2.7 19a2 2 0 0 0 1.8 3h15a2 2 0 0 0 1.8-3L13.8 4.8a2 2 0 0 0-3.6 0Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>");
+}

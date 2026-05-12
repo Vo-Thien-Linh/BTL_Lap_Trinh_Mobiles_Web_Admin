@@ -1,0 +1,199 @@
+@model Web_Admin_Booking_App.Models.SpecialtyIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quản lý Chuyên khoa";
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Tổng số chuyên khoa</div>
+                        <div class="stat-card__value">@Model.TotalCount</div>
+                        <div class="stat-card__hint text-primary">+2 chuyên khoa mới</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--primary" aria-hidden="true">
+                        @IconSquares()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Đang hoạt động</div>
+                        <div class="stat-card__value">@Model.ActiveCount</div>
+                        <div class="stat-card__hint text-secondary">91.6% công suất</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--secondary" aria-hidden="true">
+                        @IconCheckCircle()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12 col-lg-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="stat-card__label text-uppercase">Chuyên khoa mới (tháng này)</div>
+                        <div class="stat-card__value">@Model.NewThisMonthCount.ToString("00")</div>
+                        <div class="stat-card__hint text-danger">@Model.NewThisMonthNames</div>
+                    </div>
+                    <div class="admin-kpi-icon admin-kpi-icon--danger" aria-hidden="true">
+                        @IconGear()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="input-group">
+            <span class="input-group-text bg-white" aria-hidden="true">
+                @IconSearch()
+            </span>
+            <input class="form-control" type="search" placeholder="Tìm kiếm theo tên hoặc mã chuyên khoa..." />
+        </div>
+    </div>
+    <div class="col-lg-4 d-flex gap-2">
+        <select class="form-select">
+            <option selected>Tất cả trạng thái</option>
+            <option>Đang hoạt động</option>
+            <option>Tạm ngưng</option>
+        </select>
+        <a class="btn btn-primary admin-btn-plus" asp-controller="Specialties" asp-action="Create">
+            <span aria-hidden="true">+</span>
+            <span>Thêm chuyên khoa mới</span>
+        </a>
+    </div>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 260px;">Tên chuyên khoa</th>
+                        <th>Mã khoa</th>
+                        <th>Trưởng khoa</th>
+                        <th>Số bác sĩ</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var s in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            <div class="admin-specialty">
+                                <div class="admin-specialty__icon @IconClass(s.Icon)" aria-hidden="true">
+                                    @SpecialtyIconSvg(s.Icon)
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">@s.Name</div>
+                                    <div class="text-secondary small">@s.LocationNote</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary">@s.Code</td>
+                        <td>@s.HeadDoctor</td>
+                        <td>@s.DoctorCount.ToString("00")</td>
+                        <td>
+                            @if (s.Status == Web_Admin_Booking_App.Models.SpecialtyStatus.Active)
+                            {
+                                <span class="admin-pill admin-pill--active">Đang hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="admin-pill admin-pill--paused">Tạm ngưng</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="admin-action admin-action--edit" asp-controller="Specialties" asp-action="Edit" asp-route-id="@s.Id" aria-label="Sửa">
+                                @IconPencil()
+                            </a>
+                            <form asp-controller="Specialties" asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="admin-action admin-action--delete" aria-label="Xóa">
+                                    @IconTrash()
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
+            <div class="text-secondary small">Hiển thị 1 - @Model.Items.Count trên @Model.TotalCount chuyên khoa</div>
+            <nav aria-label="Phân trang">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item disabled"><a class="page-link" href="#">…</a></li>
+                    <li class="page-item"><a class="page-link" href="#">6</a></li>
+                    <li class="page-item"><a class="page-link" href="#" aria-label="Sau">›</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string IconClass(Web_Admin_Booking_App.Models.SpecialtyIcon icon) => icon switch
+    {
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Heart => "admin-specialty__icon--heart",
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Brain => "admin-specialty__icon--brain",
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Baby => "admin-specialty__icon--baby",
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Lab => "admin-specialty__icon--lab",
+        _ => "admin-specialty__icon--default"
+    };
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconSearch() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"7\" cy=\"7\" r=\"5\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M11.2 11.2L14.5 14.5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconSquares() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M5 5h6v6H5V5Zm8 0h6v6h-6V5ZM5 13h6v6H5v-6Zm8 0h6v6h-6v-6Z\" fill=\"currentColor\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconCheckCircle() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.2 12.6 7.4 10.8\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"m9.2 12.6 7.4-7.4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconGear() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-1.7-1l-.4-2.6H9.6L9.2 6a7.5 7.5 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .3 0 .7.1 1l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h4.8l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconPencil() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4 20h4l10.5-10.5a1.4 1.4 0 0 0 0-2L17 5.5a1.4 1.4 0 0 0-2 0L4 16v4Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M13.5 7.5 16.5 10.5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconTrash() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M6 7h12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M10 11v7\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M14 11v7\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M9 7l1-2h4l1 2\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M7 7l1 14h8l1-14\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>");
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent SpecialtyIconSvg(Web_Admin_Booking_App.Models.SpecialtyIcon icon) => icon switch
+    {
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Heart => new Microsoft.AspNetCore.Html.HtmlString(
+            "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21s-7-4.6-9.2-9A5.8 5.8 0 0 1 12 5a5.8 5.8 0 0 1 9.2 7c-2.2 4.4-9.2 9-9.2 9Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>"),
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Brain => new Microsoft.AspNetCore.Html.HtmlString(
+            "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9 3a4 4 0 0 0-4 4v1a3 3 0 0 0 0 6v3a4 4 0 0 0 4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M15 3a4 4 0 0 1 4 4v1a3 3 0 0 1 0 6v3a4 4 0 0 1-4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M9 7h1m-1 4h1m-1 4h1\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M14 7h1m-1 4h1m-1 4h1\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>"),
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Baby => new Microsoft.AspNetCore.Html.HtmlString(
+            "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M9.5 10.5h.01M14.5 10.5h.01\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"/><path d=\"M9.5 14.5c1 1 4 1 5 0\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>"),
+        Web_Admin_Booking_App.Models.SpecialtyIcon.Lab => new Microsoft.AspNetCore.Html.HtmlString(
+            "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M10 3v6l-5 9a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 18l-5-9V3\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M8 14h8\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>"),
+        _ => new Microsoft.AspNetCore.Html.HtmlString(
+            "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>")
+    };
+}

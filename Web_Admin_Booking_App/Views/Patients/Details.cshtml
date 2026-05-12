@@ -1,0 +1,76 @@
+@model Web_Admin_Booking_App.Models.PatientDetailsViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Chi tiết bệnh nhân";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">@Model.FullName</div>
+        <div class="text-secondary">Mã: #@Model.Id</div>
+    </div>
+    <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Thông tin cơ bản</div>
+                <div class="d-grid gap-2">
+                    <div class="d-flex justify-content-between"><span class="text-secondary">SĐT</span><span class="fw-semibold">@Model.Phone</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Email</span><span class="fw-semibold">@(Model.Email ?? "-")</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Giới tính</span><span class="fw-semibold">@GenderText(Model.Gender)</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Ngày sinh</span><span class="fw-semibold">@Model.Dob.ToString("dd/MM/yyyy")</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Trạng thái</span><span class="admin-pill @StatusClass(Model.Status)">@StatusText(Model.Status)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card panel-card mt-3">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Địa chỉ</div>
+                <div class="text-secondary">@(Model.Address ?? "-")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Tóm tắt</div>
+                <div class="d-grid gap-2">
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Lần khám gần nhất</span><span class="fw-semibold">@(Model.LastVisitAt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
+                </div>
+
+                <hr />
+
+                <div class="fw-bold mb-2">Ghi chú</div>
+                <div class="text-secondary">@(Model.Notes ?? "-")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string GenderText(Web_Admin_Booking_App.Models.Gender gender) => gender switch
+    {
+        Web_Admin_Booking_App.Models.Gender.Male => "Nam",
+        Web_Admin_Booking_App.Models.Gender.Female => "Nữ",
+        _ => "-"
+    };
+
+    private static string StatusText(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.PatientStatus.Active => "Đang hoạt động",
+        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "Ngừng theo dõi",
+        _ => "-"
+    };
+
+    private static string StatusClass(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.PatientStatus.Active => "admin-pill--paid",
+        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "admin-pill--paused",
+        _ => "admin-pill--paused"
+    };
+}

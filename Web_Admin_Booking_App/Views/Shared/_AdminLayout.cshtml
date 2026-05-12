@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MediAdmin</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Web_Admin_Booking_App.styles.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <div class="admin-shell">
+        <aside class="admin-sidebar">
+            @{
+                var currentController = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty);
+                var currentAction = (ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty);
+                string Active(string controller, string? action = null)
+                {
+                    if (!currentController.Equals(controller, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return string.Empty;
+                    }
+
+                    if (action is null)
+                    {
+                        return "admin-nav__link--active";
+                    }
+
+                    return currentAction.Equals(action, StringComparison.OrdinalIgnoreCase)
+                        ? "admin-nav__link--active"
+                        : string.Empty;
+                }
+            }
+            <div class="admin-brand">
+                <div class="admin-brand__logo">MediAdmin</div>
+                <div class="admin-brand__sub">Hệ thống Quản trị Y tế</div>
+            </div>
+
+            <nav class="admin-nav">
+                <a class="admin-nav__link @(Active("Home", "Index"))" asp-controller="Home" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="admin-nav__link @(Active("Doctors"))" asp-controller="Doctors" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Bác sĩ</span>
+                </a>
+                <a class="admin-nav__link @(Active("Specialties"))" asp-controller="Specialties" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Chuyên khoa</span>
+                </a>
+                <a class="admin-nav__link @(Active("Appointments"))" asp-controller="Appointments" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Lịch hẹn</span>
+                </a>
+                <a class="admin-nav__link @(Active("MedicalRecords"))" asp-controller="MedicalRecords" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Bệnh án</span>
+                </a>
+                <a class="admin-nav__link @(Active("Payments"))" asp-controller="Payments" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Thanh toán</span>
+                </a>
+                <a class="admin-nav__link @(Active("Patients"))" asp-controller="Patients" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Bệnh nhân</span>
+                </a>
+                <a class="admin-nav__link @(Active("WorkShifts"))" asp-controller="WorkShifts" asp-action="Index">
+                    <span class="admin-nav__dot" aria-hidden="true"></span>
+                    <span>Ca làm việc</span>
+                </a>
+            </nav>
+
+            <div class="admin-sidebar__bottom">
+                <a class="btn btn-light w-100 admin-cta" href="#">Tạo lịch hẹn mới</a>
+                <div class="admin-bottom-links">
+                    <a class="admin-nav__link" href="#">
+                        <span class="admin-nav__dot" aria-hidden="true"></span>
+                        <span>Cài đặt</span>
+                    </a>
+                    <a class="admin-nav__link" href="#">
+                        <span class="admin-nav__dot" aria-hidden="true"></span>
+                        <span>Đăng xuất</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <div class="admin-topbar__title">Tổng quan Hệ thống</div>
+
+                <div class="admin-topbar__search">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                                <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                        <input class="form-control border-start-0" type="search" placeholder="Tìm kiếm bác sĩ, khoa..." aria-label="Tìm kiếm" />
+                    </div>
+                </div>
+
+                <div class="admin-topbar__right">
+                    <button type="button" class="btn btn-sm btn-outline-secondary admin-icon-btn" aria-label="Thông báo">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M15 17H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M18 17V11a6 6 0 1 0-12 0v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M6 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M10.5 20a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary admin-icon-btn" aria-label="Trợ giúp">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M9.5 9a2.5 2.5 0 1 1 4.1 1.9c-.8.6-1.6 1.1-1.6 2.1v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M12 17h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                            <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="1.8"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary admin-icon-btn" aria-label="Ứng dụng">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="7" cy="7" r="1.5" />
+                            <circle cx="12" cy="7" r="1.5" />
+                            <circle cx="17" cy="7" r="1.5" />
+                            <circle cx="7" cy="12" r="1.5" />
+                            <circle cx="12" cy="12" r="1.5" />
+                            <circle cx="17" cy="12" r="1.5" />
+                            <circle cx="7" cy="17" r="1.5" />
+                            <circle cx="12" cy="17" r="1.5" />
+                            <circle cx="17" cy="17" r="1.5" />
+                        </svg>
+                    </button>
+
+                    <div class="admin-user">
+                        <div class="admin-user__meta">
+                            <div class="admin-user__name">Admin User</div>
+                            <div class="admin-user__role">Administrator</div>
+                        </div>
+                        <div class="admin-user__avatar" aria-hidden="true">AU</div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="admin-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

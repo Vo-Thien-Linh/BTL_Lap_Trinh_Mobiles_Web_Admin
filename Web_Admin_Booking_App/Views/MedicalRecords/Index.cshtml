@@ -1,0 +1,131 @@
+@model IReadOnlyList<Web_Admin_Booking_App.Models.MedicalRecordListItemViewModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Bệnh án";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Quản lý bệnh án</div>
+        <div class="text-secondary">Theo dõi hồ sơ khám và kết quả chẩn đoán</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="input-group">
+            <span class="input-group-text bg-white" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                    <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </span>
+            <input class="form-control" type="search" placeholder="Tìm theo mã bệnh án, tên bệnh nhân, bác sĩ..." />
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <select class="form-select">
+            <option selected>Tất cả trạng thái</option>
+            <option>Chờ duyệt</option>
+            <option>Đã duyệt</option>
+            <option>Đã hủy</option>
+        </select>
+    </div>
+    <div class="col-lg-2">
+        <input type="date" class="form-control" />
+    </div>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 140px;">Mã</th>
+                        <th style="min-width: 220px;">Bệnh nhân</th>
+                        <th>Bác sĩ</th>
+                        <th>Chuyên khoa</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold">@r.RecordCode</td>
+                        <td>
+                            <div class="person-cell">
+                                <div class="avatar">@Initials(r.PatientName)</div>
+                                <div>
+                                    <div class="fw-semibold">@r.PatientName</div>
+                                    <div class="text-secondary small">ID: #@r.Id</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary">@r.DoctorName</td>
+                        <td>@r.SpecialtyName</td>
+                        <td>
+                            <div class="fw-semibold">@r.CreatedAt.ToString("dd/MM/yyyy")</div>
+                            <div class="text-secondary small">@r.CreatedAt.ToString("HH:mm")</div>
+                        </td>
+                        <td>
+                            <span class="badge @BadgeFor(r.Status)">@StatusText(r.Status)</span>
+                        </td>
+                        <td class="text-end">
+                            <a class="admin-action admin-action--edit" asp-controller="MedicalRecords" asp-action="Details" asp-route-id="@r.Id" aria-label="Xem">
+                                @IconEye()
+                            </a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
+            <div class="text-secondary small">Hiển thị 1 - @Model.Count trên @Model.Count bệnh án</div>
+            <nav aria-label="Phân trang">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Sau">›</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "";
+        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
+        var first = parts[0].Substring(0, 1).ToUpperInvariant();
+        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
+        return first + last;
+    }
+
+    private static string StatusText(Web_Admin_Booking_App.Models.MedicalRecordStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Pending => "Chờ duyệt",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Approved => "Đã duyệt",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Cancelled => "Đã hủy",
+        _ => "-"
+    };
+
+    private static string BadgeFor(Web_Admin_Booking_App.Models.MedicalRecordStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Pending => "text-bg-warning",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Approved => "text-bg-success",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Cancelled => "text-bg-danger",
+        _ => "text-bg-light"
+    };
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent IconEye() => new Microsoft.AspNetCore.Html.HtmlString(
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
+}

@@ -1,0 +1,140 @@
+@model IReadOnlyList<Web_Admin_Booking_App.Models.AppointmentListItemViewModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Lịch hẹn";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Quản lý lịch hẹn</div>
+        <div class="text-secondary">Tạo lịch, theo dõi trạng thái và điều phối khám</div>
+    </div>
+    <a class="btn btn-primary" asp-controller="Appointments" asp-action="Create">Tạo lịch hẹn mới</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="input-group">
+            <span class="input-group-text bg-white" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                    <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </span>
+            <input class="form-control" type="search" placeholder="Tìm theo tên bệnh nhân, bác sĩ..." />
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <select class="form-select">
+            <option selected>Tất cả trạng thái</option>
+            <option>Chờ xác nhận</option>
+            <option>Đã xác nhận</option>
+            <option>Sắp đến</option>
+            <option>Đang khám</option>
+            <option>Đã khám</option>
+            <option>Đã hủy</option>
+        </select>
+    </div>
+    <div class="col-lg-3">
+        <input type="date" class="form-control" />
+    </div>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="min-width: 260px;">Bệnh nhân</th>
+                        <th>Bác sĩ</th>
+                        <th>Chuyên khoa</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="person-cell">
+                                <div class="avatar">@Initials(a.PatientName)</div>
+                                <div>
+                                    <div class="fw-semibold">@a.PatientName</div>
+                                    <div class="text-secondary small">@(!string.IsNullOrWhiteSpace(a.PatientNote) ? a.PatientNote : $"Mã: #{a.Id}")</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary">@a.DoctorName</td>
+                        <td>@a.SpecialtyName</td>
+                        <td>
+                            <div class="fw-semibold">@a.ScheduledAt.ToString("HH:mm")</div>
+                            <div class="text-secondary small">@a.ScheduledAt.ToString("dd/MM/yyyy")</div>
+                        </td>
+                        <td>
+                            <span class="badge @BadgeFor(a.Status)">@StatusText(a.Status)</span>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-light" title="Tùy chọn" aria-label="Tùy chọn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <circle cx="6" cy="12" r="1.6" />
+                                    <circle cx="12" cy="12" r="1.6" />
+                                    <circle cx="18" cy="12" r="1.6" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
+            <div class="text-secondary small">Hiển thị 1 - @Model.Count trên @Model.Count lịch hẹn</div>
+            <nav aria-label="Phân trang">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Sau">›</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "";
+        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
+        var first = parts[0].Substring(0, 1).ToUpperInvariant();
+        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
+        return first + last;
+    }
+
+    private static string StatusText(Web_Admin_Booking_App.Models.AppointmentStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.AppointmentStatus.Pending => "Chờ xác nhận",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Confirmed => "Đã xác nhận",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming => "Sắp đến",
+        Web_Admin_Booking_App.Models.AppointmentStatus.InProgress => "Đang khám",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Completed => "Đã khám",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Cancelled => "Đã hủy",
+        _ => "-"
+    };
+
+    private static string BadgeFor(Web_Admin_Booking_App.Models.AppointmentStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.AppointmentStatus.Pending => "text-bg-secondary",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Confirmed => "text-bg-info",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming => "text-bg-primary",
+        Web_Admin_Booking_App.Models.AppointmentStatus.InProgress => "text-bg-warning",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Completed => "text-bg-success",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Cancelled => "text-bg-danger",
+        _ => "text-bg-light"
+    };
+}

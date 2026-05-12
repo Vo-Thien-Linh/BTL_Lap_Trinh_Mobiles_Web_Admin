@@ -1,0 +1,64 @@
+@model Web_Admin_Booking_App.Models.DoctorCreateViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Thêm bác sĩ";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Thêm bác sĩ</div>
+        <div class="text-secondary">Tạo mới hồ sơ bác sĩ trong hệ thống</div>
+    </div>
+    <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body">
+        <form asp-action="Create" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+
+            <div class="col-md-6">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName" class="form-control" placeholder="VD: Nguyễn Văn A" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Department" class="form-label"></label>
+                <input asp-for="Department" class="form-control" placeholder="VD: Nội tổng quát" />
+                <span asp-validation-for="Department" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" placeholder="VD: 0901 234 567" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" placeholder="VD: doctor@hospital.vn" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" class="form-select">
+                    <option value="Đang trực">Đang trực</option>
+                    <option value="Đang khám">Đang khám</option>
+                    <option value="Nghỉ">Nghỉ</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Lưu</button>
+                <a class="btn btn-outline-secondary" asp-controller="Doctors" asp-action="Index">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

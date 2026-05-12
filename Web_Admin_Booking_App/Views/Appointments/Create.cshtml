@@ -1,0 +1,97 @@
+@model Web_Admin_Booking_App.Models.AppointmentCreateViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Đặt lịch hẹn";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Tạo lịch hẹn mới</div>
+        <div class="text-secondary">Nhập thông tin bệnh nhân và thời gian khám</div>
+    </div>
+    <a class="btn btn-light" asp-controller="Appointments" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body">
+        <form asp-action="Create" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+
+            <div class="col-md-6">
+                <label asp-for="PatientName" class="form-label"></label>
+                <input asp-for="PatientName" class="form-control" placeholder="VD: Nguyễn Văn An" />
+                <span asp-validation-for="PatientName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="PatientPhone" class="form-label"></label>
+                <input asp-for="PatientPhone" class="form-control" placeholder="VD: 0901 234 567" />
+                <span asp-validation-for="PatientPhone" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="DoctorName" class="form-label"></label>
+                <select asp-for="DoctorName" class="form-select">
+                    <option value="">-- Chọn bác sĩ --</option>
+                    @foreach (var d in Model.Doctors)
+                    {
+                        <option value="@d.Value">@d.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="DoctorName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="SpecialtyName" class="form-label"></label>
+                <select asp-for="SpecialtyName" class="form-select">
+                    <option value="">-- Chọn chuyên khoa --</option>
+                    @foreach (var s in Model.Specialties)
+                    {
+                        <option value="@s.Value">@s.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="SpecialtyName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" class="form-control" type="date" />
+                <span asp-validation-for="Date" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="Time" class="form-label"></label>
+                <input asp-for="Time" class="form-control" type="time" />
+                <span asp-validation-for="Time" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" class="form-select">
+                    <option value="Pending">Chờ xác nhận</option>
+                    <option value="Confirmed">Đã xác nhận</option>
+                    <option value="Upcoming">Sắp đến</option>
+                    <option value="InProgress">Đang khám</option>
+                    <option value="Completed">Đã khám</option>
+                    <option value="Cancelled">Đã hủy</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Note" class="form-label"></label>
+                <textarea asp-for="Note" class="form-control" rows="3" placeholder="Ghi chú thêm (nếu có)"></textarea>
+                <span asp-validation-for="Note" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Lưu lịch hẹn</button>
+                <a class="btn btn-outline-secondary" asp-controller="Appointments" asp-action="Index">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

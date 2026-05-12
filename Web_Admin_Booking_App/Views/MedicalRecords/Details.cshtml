@@ -1,0 +1,71 @@
+@model Web_Admin_Booking_App.Models.MedicalRecordDetailsViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Chi tiết bệnh án";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">@Model.RecordCode</div>
+        <div class="text-secondary">@Model.PatientName • @Model.SpecialtyName</div>
+    </div>
+    <a class="btn btn-light" asp-controller="MedicalRecords" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Thông tin</div>
+                <div class="d-grid gap-2">
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Bệnh nhân</span><span class="fw-semibold">@Model.PatientName</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">SĐT</span><span class="fw-semibold">@(Model.PatientPhone ?? "-")</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Bác sĩ</span><span class="fw-semibold">@Model.DoctorName</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Chuyên khoa</span><span class="fw-semibold">@Model.SpecialtyName</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-secondary">Ngày tạo</span><span class="fw-semibold">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-secondary">Trạng thái</span>
+                        <span class="badge @BadgeFor(Model.Status)">@StatusText(Model.Status)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Chẩn đoán</div>
+                <div class="text-secondary">@(Model.Diagnosis ?? "-")</div>
+
+                <hr />
+
+                <div class="fw-bold mb-2">Ghi chú lâm sàng</div>
+                <div class="text-secondary">@(Model.ClinicalNotes ?? "-")</div>
+
+                <hr />
+
+                <div class="fw-bold mb-2">Toa thuốc</div>
+                <div class="text-secondary">@(Model.Prescription ?? "-")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string StatusText(Web_Admin_Booking_App.Models.MedicalRecordStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Pending => "Chờ duyệt",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Approved => "Đã duyệt",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Cancelled => "Đã hủy",
+        _ => "-"
+    };
+
+    private static string BadgeFor(Web_Admin_Booking_App.Models.MedicalRecordStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Pending => "text-bg-warning",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Approved => "text-bg-success",
+        Web_Admin_Booking_App.Models.MedicalRecordStatus.Cancelled => "text-bg-danger",
+        _ => "text-bg-light"
+    };
+}
