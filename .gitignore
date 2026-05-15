@@ -39,3 +39,5 @@ _ReSharper*/
 .vs/
 bin/
 obj/
+
+firebase-service-account.json
