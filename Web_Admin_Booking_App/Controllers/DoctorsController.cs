@@ -1,20 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Web_Admin_Booking_App.Models;
+using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
 public class DoctorsController : Controller
 {
-    public IActionResult Index()
-    {
-        var doctors = new List<DoctorListItemViewModel>
-        {
-            new() { Id = 1, FullName = "BS. Trần Đức Long", Department = "Nội tổng quát", Phone = "0901 234 567", Status = "Đang trực" },
-            new() { Id = 2, FullName = "BS. Lê Minh Thư", Department = "Nhi khoa", Phone = "0902 345 678", Status = "Đang khám" },
-            new() { Id = 3, FullName = "BS. Ngô Bảo Châu", Department = "Chẩn đoán hình ảnh", Phone = "0903 456 789", Status = "Nghỉ" },
-            new() { Id = 4, FullName = "BS. Phạm Quang Huy", Department = "Tim mạch", Phone = "0904 567 890", Status = "Đang trực" },
-        };
+    private readonly FirestoreAdminDataService _dataService;
 
+    public DoctorsController(FirestoreAdminDataService dataService)
+    {
+        _dataService = dataService;
+    }
+
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    {
+        var doctors = await _dataService.GetDoctorsAsync(cancellationToken);
         return View(doctors);
     }
 
@@ -33,22 +34,12 @@ public class DoctorsController : Controller
             return View(model);
         }
 
-        // TODO: Persist to database
+        TempData["InfoMessage"] = "Chức năng tạo bác sĩ từ Web Admin sẽ được nối Firestore ở bước tiếp theo.";
         return RedirectToAction(nameof(Index));
     }
 
     public IActionResult Details(int id)
     {
-        var doctor = new DoctorDetailsViewModel
-        {
-            Id = id,
-            FullName = "BS. Trần Đức Long",
-            Department = "Nội tổng quát",
-            Phone = "0901 234 567",
-            Email = "doctor@example.com",
-            Status = "Đang trực",
-        };
-
-        return View(doctor);
+        return RedirectToAction(nameof(Index));
     }
 }
