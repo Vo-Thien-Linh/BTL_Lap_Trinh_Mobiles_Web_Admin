@@ -38,8 +38,15 @@ public class DoctorsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    public IActionResult Details(int id)
+    public async Task<IActionResult> Details(string id, CancellationToken cancellationToken)
     {
-        return RedirectToAction(nameof(Index));
+        var doctor = await _dataService.GetDoctorDetailsAsync(id, cancellationToken);
+        if (doctor is null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy bác sĩ trên Firebase.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(doctor);
     }
 }

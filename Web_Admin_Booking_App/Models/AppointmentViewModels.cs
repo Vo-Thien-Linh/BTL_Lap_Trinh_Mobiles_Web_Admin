@@ -15,11 +15,28 @@ public enum AppointmentStatus
 public class AppointmentListItemViewModel
 {
     public int Id { get; set; }
+    public string DocumentId { get; set; } = string.Empty;
+    public string AppointmentCode { get; set; } = string.Empty;
+    public string? PatientId { get; set; }
     public string PatientName { get; set; } = string.Empty;
+    public string PatientPhone { get; set; } = string.Empty;
+    public string PatientEmail { get; set; } = string.Empty;
     public string PatientNote { get; set; } = string.Empty;
+    public string? DoctorId { get; set; }
     public string DoctorName { get; set; } = string.Empty;
+    public string DoctorPhone { get; set; } = string.Empty;
+    public string DoctorEmail { get; set; } = string.Empty;
+    public string DepartmentId { get; set; } = string.Empty;
     public string SpecialtyName { get; set; } = string.Empty;
+    public string RoomName { get; set; } = string.Empty;
+    public string AppointmentType { get; set; } = string.Empty;
     public DateTime ScheduledAt { get; set; }
+    public string Duration { get; set; } = string.Empty;
+    public string ConsultationFee { get; set; } = string.Empty;
+    public string PaymentStatus { get; set; } = string.Empty;
+    public string CancelReason { get; set; } = string.Empty;
+    public DateTime? CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public AppointmentStatus Status { get; set; }
 }
 

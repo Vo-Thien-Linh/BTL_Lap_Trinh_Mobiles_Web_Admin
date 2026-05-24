@@ -7,7 +7,7 @@
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
         <div class="fw-bold fs-5">Thêm bác sĩ</div>
-        <div class="text-secondary">Tạo mới hồ sơ bác sĩ trong hệ thống</div>
+        <div class="text-secondary">Tạo tài khoản và hồ sơ chuyên môn cho bác sĩ</div>
     </div>
     <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
 </div>
@@ -17,22 +17,15 @@
         <form asp-action="Create" method="post" class="row g-3">
             @Html.AntiForgeryToken()
 
+            <div class="col-12">
+                <div class="fw-bold">Thông tin tài khoản</div>
+                <div class="text-secondary small">Dữ liệu tương ứng collection users, role mặc định là doctor.</div>
+            </div>
+
             <div class="col-md-6">
                 <label asp-for="FullName" class="form-label"></label>
-                <input asp-for="FullName" class="form-control" placeholder="VD: Nguyễn Văn A" />
+                <input asp-for="FullName" class="form-control" placeholder="VD: BS. Nguyễn Văn A" />
                 <span asp-validation-for="FullName" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="Department" class="form-label"></label>
-                <input asp-for="Department" class="form-control" placeholder="VD: Nội tổng quát" />
-                <span asp-validation-for="Department" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="Phone" class="form-label"></label>
-                <input asp-for="Phone" class="form-control" placeholder="VD: 0901 234 567" />
-                <span asp-validation-for="Phone" class="text-danger"></span>
             </div>
 
             <div class="col-md-6">
@@ -42,13 +35,120 @@
             </div>
 
             <div class="col-md-6">
-                <label asp-for="Status" class="form-label"></label>
-                <select asp-for="Status" class="form-select">
-                    <option value="Đang trực">Đang trực</option>
-                    <option value="Đang khám">Đang khám</option>
-                    <option value="Nghỉ">Nghỉ</option>
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" placeholder="VD: 0901 234 567" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="AvatarUrl" class="form-label"></label>
+                <input asp-for="AvatarUrl" class="form-control" placeholder="https://..." />
+                <span asp-validation-for="AvatarUrl" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Gender" class="form-label"></label>
+                <select asp-for="Gender" class="form-select">
+                    <option value="">Chưa chọn</option>
+                    <option value="male">Nam</option>
+                    <option value="female">Nữ</option>
                 </select>
-                <span asp-validation-for="Status" class="text-danger"></span>
+                <span asp-validation-for="Gender" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="DateOfBirth" class="form-label"></label>
+                <input asp-for="DateOfBirth" class="form-control" />
+                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="UserStatus" class="form-label"></label>
+                <select asp-for="UserStatus" class="form-select">
+                    <option value="pending">Chờ kích hoạt</option>
+                    <option value="active">Đang hoạt động</option>
+                    <option value="blocked">Đã khóa</option>
+                </select>
+                <span asp-validation-for="UserStatus" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="UserId" class="form-label"></label>
+                <input asp-for="UserId" class="form-control" placeholder="UID Firebase Auth nếu đã có" />
+                <span asp-validation-for="UserId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="EmailVerified" class="form-check-input" />
+                    <label asp-for="EmailVerified" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="col-12 pt-2">
+                <hr />
+                <div class="fw-bold">Hồ sơ bác sĩ</div>
+                <div class="text-secondary small">Dữ liệu tương ứng collection Doctors.</div>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="DepartmentId" class="form-label"></label>
+                <input asp-for="DepartmentId" class="form-control" placeholder="VD: dept_internal" />
+                <span asp-validation-for="DepartmentId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Specialization" class="form-label"></label>
+                <input asp-for="Specialization" class="form-control" placeholder="VD: Nội tổng quát" />
+                <span asp-validation-for="Specialization" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="LicenseNumber" class="form-label"></label>
+                <input asp-for="LicenseNumber" class="form-control" placeholder="VD: LIC-0001" />
+                <span asp-validation-for="LicenseNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Degree" class="form-label"></label>
+                <input asp-for="Degree" class="form-control" placeholder="VD: Thạc sĩ, Bác sĩ CKI" />
+                <span asp-validation-for="Degree" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="YearsOfExperience" class="form-label"></label>
+                <input asp-for="YearsOfExperience" class="form-control" type="number" min="0" max="80" />
+                <span asp-validation-for="YearsOfExperience" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="ConsultationFee" class="form-label"></label>
+                <input asp-for="ConsultationFee" class="form-control" type="number" min="0" step="1000" />
+                <span asp-validation-for="ConsultationFee" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="VerificationStatus" class="form-label"></label>
+                <select asp-for="VerificationStatus" class="form-select">
+                    <option value="pending">Chờ duyệt</option>
+                    <option value="approved">Đã duyệt</option>
+                    <option value="rejected">Từ chối</option>
+                    <option value="draft">Bản nháp</option>
+                </select>
+                <span asp-validation-for="VerificationStatus" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Biography" class="form-label"></label>
+                <textarea asp-for="Biography" class="form-control" rows="4" placeholder="Tóm tắt chuyên môn, kinh nghiệm và phạm vi điều trị"></textarea>
+                <span asp-validation-for="Biography" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
             </div>
 
             <div class="col-12 d-flex gap-2">
