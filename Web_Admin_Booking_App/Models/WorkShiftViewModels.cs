@@ -17,6 +17,11 @@ public class WorkShiftsIndexViewModel
 {
     public string Mode { get; set; } = "calendar"; // calendar | list
     public string RangeLabel { get; set; } = string.Empty;
+    public WorkScheduleGenerateViewModel GenerateForm { get; set; } = new();
+    public IReadOnlyList<SelectOption> Doctors { get; set; } = Array.Empty<SelectOption>();
+    public IReadOnlyList<SelectOption> Departments { get; set; } = Array.Empty<SelectOption>();
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> DepartmentRooms { get; set; } = new Dictionary<string, IReadOnlyList<string>>();
+    public IReadOnlyList<SelectOption> Shifts { get; set; } = Array.Empty<SelectOption>();
 
     public string TotalDoctorsLabel { get; set; } = string.Empty;
     public int UnassignedCount { get; set; }
@@ -28,6 +33,40 @@ public class WorkShiftsIndexViewModel
 
     public string TodayLabel { get; set; } = string.Empty;
     public IReadOnlyList<TodayAssignmentViewModel> TodayAssignments { get; set; } = Array.Empty<TodayAssignmentViewModel>();
+    public IReadOnlyList<DoctorScheduleRowViewModel> Schedules { get; set; } = Array.Empty<DoctorScheduleRowViewModel>();
+}
+
+public class WorkScheduleGenerateViewModel
+{
+    public string DoctorId { get; set; } = string.Empty;
+    public string DepartmentId { get; set; } = string.Empty;
+    public string Room { get; set; } = string.Empty;
+    public List<string> ShiftIds { get; set; } = new();
+    public List<DayOfWeek> DaysOfWeek { get; set; } = new();
+    public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public int WeeksAhead { get; set; } = 4;
+    public int AvailableSlots { get; set; } = 10;
+}
+
+public class WorkScheduleBackfillRoomViewModel
+{
+    public string DoctorId { get; set; } = string.Empty;
+    public string DepartmentId { get; set; } = string.Empty;
+    public string Room { get; set; } = string.Empty;
+}
+
+public class DoctorScheduleRowViewModel
+{
+    public string DocumentId { get; set; } = string.Empty;
+    public DateOnly Date { get; set; }
+    public string DoctorName { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string Room { get; set; } = string.Empty;
+    public string ShiftName { get; set; } = string.Empty;
+    public string ShiftTime { get; set; } = string.Empty;
+    public int AvailableSlots { get; set; }
+    public bool IsActive { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 public class CalendarMonthViewModel

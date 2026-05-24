@@ -7,32 +7,89 @@
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
         <div class="fw-bold fs-5">@Model.FullName</div>
-        <div class="text-secondary">@Model.Department</div>
+        <div class="text-secondary">
+            @if (!string.IsNullOrWhiteSpace(Model.Degree))
+            {
+                <span>@Model.Degree</span>
+                <span> - </span>
+            }
+            <span>@ValueOrDash(Model.Specialization ?? Model.Department)</span>
+        </div>
     </div>
     <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
 </div>
 
 <div class="row g-3">
-    <div class="col-lg-6">
+    <div class="col-lg-5">
         <div class="card panel-card">
             <div class="card-body">
-                <div class="fw-bold mb-2">Thông tin</div>
+                <div class="fw-bold mb-2">Hồ sơ</div>
                 <div class="d-grid gap-2">
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Mã</span><span class="fw-semibold">#@Model.Id</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Trạng thái</span><span class="badge text-bg-primary">@Model.Status</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Số điện thoại</span><span class="fw-semibold">@Model.Phone</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Email</span><span class="fw-semibold">@(Model.Email ?? "-")</span></div>
+                    @FieldRows(Model.ProfileFields)
+                </div>
+            </div>
+        </div>
+
+        <div class="card panel-card mt-3">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Liên hệ</div>
+                <div class="d-grid gap-2">
+                    @FieldRows(Model.ContactFields)
+                </div>
+            </div>
+        </div>
+
+        <div class="card panel-card mt-3">
+            <div class="card-body">
+                <div class="fw-bold mb-2">Quản trị</div>
+                <div class="d-grid gap-2">
+                    @FieldRows(Model.AdminFields)
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-6">
+    <div class="col-lg-7">
         <div class="card panel-card">
             <div class="card-body">
-                <div class="fw-bold mb-2">Ghi chú</div>
-                <div class="text-secondary">Trang này đang dùng dữ liệu mẫu. Có thể nối DB/API để hiển thị lịch làm việc, lịch hẹn của bác sĩ…</div>
+                <div class="fw-bold mb-2">Chuyên môn</div>
+                <div class="row g-3">
+                    @FieldTiles(Model.ProfessionalFields)
+                </div>
             </div>
         </div>
+
     </div>
 </div>
+
+@functions {
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent FieldRows(
+        IReadOnlyList<Web_Admin_Booking_App.Models.DoctorDetailFieldViewModel> fields)
+    {
+        if (fields.Count == 0)
+        {
+            return new Microsoft.AspNetCore.Html.HtmlString("<div class=\"text-secondary\">Chưa có thông tin.</div>");
+        }
+
+        var rows = string.Join("", fields.Select(field =>
+            $"<div class=\"d-flex justify-content-between gap-3\"><span class=\"text-secondary\">{Encode(field.Label)}</span><span class=\"fw-semibold text-end text-break\">{Encode(field.Value)}</span></div>"));
+        return new Microsoft.AspNetCore.Html.HtmlString(rows);
+    }
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent FieldTiles(
+        IReadOnlyList<Web_Admin_Booking_App.Models.DoctorDetailFieldViewModel> fields)
+    {
+        if (fields.Count == 0)
+        {
+            return new Microsoft.AspNetCore.Html.HtmlString("<div class=\"col-12 text-secondary\">Chưa có thông tin.</div>");
+        }
+
+        var tiles = string.Join("", fields.Select(field =>
+            $"<div class=\"col-md-6\"><div class=\"text-secondary small\">{Encode(field.Label)}</div><div class=\"fw-semibold text-break\">{Encode(field.Value)}</div></div>"));
+        return new Microsoft.AspNetCore.Html.HtmlString(tiles);
+    }
+
+    private static string Encode(string value) => System.Net.WebUtility.HtmlEncode(value);
+}

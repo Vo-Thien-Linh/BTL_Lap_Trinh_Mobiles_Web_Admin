@@ -23,7 +23,7 @@
                             <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
                     </span>
-                    <input class="form-control" type="search" placeholder="Tìm theo tên bác sĩ, chuyên khoa..." />
+                    <input class="form-control" type="search" placeholder="Tìm theo tên, email, số điện thoại, chuyên khoa..." />
                 </div>
             </div>
             <div class="col-md-6 text-md-end">
@@ -35,10 +35,11 @@
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr class="text-secondary">
-                        <th style="min-width: 240px;">Bác sĩ</th>
-                        <th>Chuyên khoa</th>
-                        <th>Số điện thoại</th>
-                        <th>Trạng thái</th>
+                        <th style="min-width: 260px;">Tài khoản</th>
+                        <th style="min-width: 220px;">Hồ sơ bác sĩ</th>
+                        <th style="min-width: 180px;">Hành nghề</th>
+                        <th>Phí khám</th>
+                        <th style="min-width: 160px;">Trạng thái</th>
                         <th class="text-end">Hành động</th>
                     </tr>
                 </thead>
@@ -51,26 +52,32 @@
                                 <div class="avatar">@Initials(d.FullName)</div>
                                 <div>
                                     <div class="fw-semibold">@d.FullName</div>
-                                    <div class="text-secondary small">Mã: #@d.Id</div>
+                                    @if (!string.IsNullOrWhiteSpace(d.Email))
+                                    {
+                                        <div class="text-secondary small text-break">@d.Email</div>
+                                    }
+                                    <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Phone) ? "Chưa có số điện thoại" : d.Phone)</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="text-secondary">@d.Department</td>
-                        <td>@d.Phone</td>
                         <td>
-                            @{
-                                var badge = d.Status switch
-                                {
-                                    "Đang trực" => "text-bg-primary",
-                                    "Đang khám" => "text-bg-warning",
-                                    "Nghỉ" => "text-bg-secondary",
-                                    _ => "text-bg-light"
-                                };
-                            }
-                            <span class="badge @badge">@d.Status</span>
+                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(d.Department) ? "-" : d.Department)</div>
+                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Specialization) ? "Chưa có chuyên khoa" : d.Specialization)</div>
+                            <div class="text-secondary small">Mã hồ sơ: #@d.DocumentId</div>
+                        </td>
+                        <td>
+                            <div>@(string.IsNullOrWhiteSpace(d.LicenseNumber) ? "-" : d.LicenseNumber)</div>
+                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Degree) ? "Chưa có học vị" : d.Degree)</div>
+                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.YearsOfExperience) ? "Chưa có kinh nghiệm" : d.YearsOfExperience)</div>
+                        </td>
+                        <td class="text-secondary">@(string.IsNullOrWhiteSpace(d.ConsultationFee) ? "-" : d.ConsultationFee)</td>
+                        <td>
+                            <div><span class="badge @StatusBadge(d.UserStatus)">@ValueOrDash(d.UserStatus)</span></div>
+                            <div class="mt-1"><span class="badge @StatusBadge(d.VerificationStatus)">@ValueOrDash(d.VerificationStatus)</span></div>
+                            <div class="text-secondary small mt-1">Hoạt động: @(d.IsActive == true ? "Có" : "Không")</div>
                         </td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-light" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">Xem</a>
+                            <a class="btn btn-sm btn-light" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.DocumentId">Xem</a>
                         </td>
                     </tr>
                 }
@@ -91,4 +98,14 @@
         var last = parts[^1].Substring(0, 1).ToUpperInvariant();
         return first + last;
     }
+
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string StatusBadge(string? status) => status switch
+    {
+        "Đang hoạt động" or "Đã duyệt" => "text-bg-primary",
+        "Chờ kích hoạt" or "Chờ duyệt" or "Bản nháp" => "text-bg-warning",
+        "Đã khóa" or "Từ chối" => "text-bg-secondary",
+        _ => "text-bg-light"
+    };
 }
