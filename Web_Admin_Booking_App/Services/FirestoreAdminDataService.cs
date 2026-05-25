@@ -31,7 +31,7 @@ public sealed class FirestoreAdminDataService
 
             result.Add(new PatientListItemViewModel
             {
-                Id = index++,
+                Id = doc.Id,
                 FullName = GetString(doc, "fullName", "FullName", "username", "Username") ?? "Chưa có tên",
                 Phone = GetString(doc, "phone", "phoneNumber", "Phone") ?? string.Empty,
                 Gender = ParseGender(GetString(doc, "gender", "Gender")),
@@ -49,7 +49,7 @@ public sealed class FirestoreAdminDataService
 
             result.Add(new PatientListItemViewModel
             {
-                Id = index++,
+                Id = doc.Id,
                 FullName = GetString(doc, "fullName", "FullName", "patientName", "name", "username", "Username") ?? "Chưa có tên",
                 Phone = GetString(doc, "phone", "phoneNumber", "Phone") ?? string.Empty,
                 Gender = ParseGender(GetString(doc, "gender", "Gender")),
@@ -77,7 +77,7 @@ public sealed class FirestoreAdminDataService
             var yearsOfExperience = GetString(doc, "yearsOfExperience", "experienceYears", "experience", "workExperience");
             result.Add(new DoctorListItemViewModel
             {
-                Id = index++,
+                Id = doc.Id,
                 DocumentId = doc.Id,
                 UserId = GetString(doc, "userId", "UserId"),
                 FullName = GetStringFromSources(sources, "fullName", "FullName", "doctorName", "name", "username", "Username") ?? $"Bác sĩ {index}",
@@ -177,7 +177,7 @@ public sealed class FirestoreAdminDataService
 
             result.Add(new AppointmentListItemViewModel
             {
-                Id = index++,
+                Id = doc.Id,
                 DocumentId = doc.Id,
                 AppointmentCode = GetString(doc, "appointmentCode", "code", "bookingCode", "BookingCode") ?? doc.Id,
                 PatientId = patientId,
@@ -230,7 +230,7 @@ public sealed class FirestoreAdminDataService
 
             transactions.Add(new TransactionListItemViewModel
             {
-                Id = index++,
+                Id = doc.Id,
                 InvoiceCode = GetString(doc, "invoiceCode", "code", "id") ?? doc.Id,
                 PatientName = GetString(doc, "patientName", "PatientName") ?? string.Empty,
                 ServiceName = GetString(doc, "serviceName", "description") ?? "Dịch vụ khám",

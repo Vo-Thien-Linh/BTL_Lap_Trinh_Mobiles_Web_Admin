@@ -1,0 +1,75 @@
+﻿@model Web_Admin_Booking_App.Models.SpecialtyIndexViewModel
+@using Web_Admin_Booking_App.Models
+@functions {
+    string StatusClass(SpecialtyStatus status) => status == SpecialtyStatus.Active ? "admin-pill admin-pill--active" : "admin-pill admin-pill--paused";
+    string StatusText(SpecialtyStatus status) => status == SpecialtyStatus.Active ? "Đang hoạt động" : "Tạm ngưng";
+    string IconClass(SpecialtyIcon icon) => icon switch
+    {
+        SpecialtyIcon.Heart => "admin-specialty__icon--heart",
+        SpecialtyIcon.Brain => "admin-specialty__icon--brain",
+        SpecialtyIcon.Baby => "admin-specialty__icon--baby",
+        SpecialtyIcon.Lab => "admin-specialty__icon--lab",
+        _ => "admin-specialty__icon--default"
+    };
+}
+
+<div class="card panel-card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle admin-table ui-table mb-0">
+            <thead>
+                <tr>
+                    <th>Tên chuyên khoa</th>
+                    <th>Mã khoa</th>
+                    <th>Trưởng khoa</th>
+                    <th class="text-center">Số bác sĩ</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="6" class="empty-state">Không tìm thấy chuyên khoa phù hợp.</td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                <tr>
+                    <td>
+                        <div class="admin-specialty rich-person">
+                            <div class="admin-specialty__icon @IconClass(item.Icon)">+</div>
+                            <div>
+                                <div class="fw-bold">@item.Name</div>
+                                <div class="subtle-text">@item.LocationNote</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="code-badge">@item.Code</span></td>
+                    <td>@(string.IsNullOrWhiteSpace(item.HeadDoctor) ? "Chưa phân công" : item.HeadDoctor)</td>
+                    <td class="text-center fw-bold">@item.DoctorCount</td>
+                    <td class="text-center"><span class="@StatusClass(item.Status)">@StatusText(item.Status)</span></td>
+                    <td class="text-end">
+                        <div class="action-group">
+                            <a class="btn btn-sm btn-soft-primary" asp-controller="Specialties" asp-action="Edit" asp-route-id="@item.Id">Sửa</a>
+                            <form asp-controller="Specialties" asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn chắc chắn muốn xóa chuyên khoa này?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-soft-danger">Xóa</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footer">
+        <span>Hiển thị @Model.Items.Count trên @Model.TotalCount chuyên khoa</span>
+        <nav class="pager-actions">
+            <a class="btn btn-sm btn-light @(Model.Page <= 1 ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page - 1)">‹</a>
+            <span class="pager-current">@Model.Page / @Model.TotalPages</span>
+            <a class="btn btn-sm btn-light @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page + 1)">›</a>
+        </nav>
+    </div>
+</div>

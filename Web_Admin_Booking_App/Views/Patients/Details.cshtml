@@ -1,76 +1,135 @@
 @model Web_Admin_Booking_App.Models.PatientDetailsViewModel
+@using Web_Admin_Booking_App.Models
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Chi tiết bệnh nhân";
 }
-
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-    <div>
-        <div class="fw-bold fs-5">@Model.FullName</div>
-        <div class="text-secondary">Mã: #@Model.Id</div>
-    </div>
-    <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại</a>
-</div>
-
-<div class="row g-3">
-    <div class="col-lg-4">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Thông tin cơ bản</div>
-                <div class="d-grid gap-2">
-                    <div class="d-flex justify-content-between"><span class="text-secondary">SĐT</span><span class="fw-semibold">@Model.Phone</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Email</span><span class="fw-semibold">@(Model.Email ?? "-")</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Giới tính</span><span class="fw-semibold">@GenderText(Model.Gender)</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Ngày sinh</span><span class="fw-semibold">@Model.Dob.ToString("dd/MM/yyyy")</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Trạng thái</span><span class="admin-pill @StatusClass(Model.Status)">@StatusText(Model.Status)</span></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card panel-card mt-3">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Địa chỉ</div>
-                <div class="text-secondary">@(Model.Address ?? "-")</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Tóm tắt</div>
-                <div class="d-grid gap-2">
-                    <div class="d-flex justify-content-between"><span class="text-secondary">Lần khám gần nhất</span><span class="fw-semibold">@(Model.LastVisitAt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
-                </div>
-
-                <hr />
-
-                <div class="fw-bold mb-2">Ghi chú</div>
-                <div class="text-secondary">@(Model.Notes ?? "-")</div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @functions {
-    private static string GenderText(Web_Admin_Booking_App.Models.Gender gender) => gender switch
+    string GenderText(Gender gender) => gender switch
     {
-        Web_Admin_Booking_App.Models.Gender.Male => "Nam",
-        Web_Admin_Booking_App.Models.Gender.Female => "Nữ",
-        _ => "-"
+        Gender.Male => "Nam",
+        Gender.Female => "Nữ",
+        Gender.Other => "Khác",
+        _ => "Chưa cập nhật"
     };
 
-    private static string StatusText(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
+    string StatusText(PatientStatus status) => status switch
     {
-        Web_Admin_Booking_App.Models.PatientStatus.Active => "Đang hoạt động",
-        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "Ngừng theo dõi",
-        _ => "-"
-    };
-
-    private static string StatusClass(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
-    {
-        Web_Admin_Booking_App.Models.PatientStatus.Active => "admin-pill--paid",
-        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "admin-pill--paused",
-        _ => "admin-pill--paused"
+        PatientStatus.Inactive => "Tạm ngưng",
+        PatientStatus.Blocked => "Bị khóa",
+        _ => "Đang hoạt động"
     };
 }
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+        <div class="eyebrow">Hồ sơ bệnh nhân</div>
+        <h1 class="page-title mb-1">@Model.FullName</h1>
+        <p class="text-secondary mb-0">Mã bệnh nhân: @Model.Id</p>
+    </div>
+    <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại danh sách</a>
+</div>
+
+<div class="patient-detail-grid">
+    <aside class="profile-summary-card">
+        <div class="avatar avatar-xl mx-auto">@Model.AvatarText</div>
+        <h2>@Model.FullName</h2>
+        <p>@(string.IsNullOrWhiteSpace(Model.Email) ? "Chưa có email" : Model.Email)</p>
+        <span class="admin-pill admin-pill--active">@StatusText(Model.Status)</span>
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-item">
+            <span>BHYT</span>
+            <strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong>
+        </div>
+        <div class="summary-item">
+            <span>Trạng thái BHYT</span>
+            <strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceStatus) ? "Chưa xác minh" : Model.HealthInsuranceStatus)</strong>
+        </div>
+        <div class="summary-item">
+            <span>Ngày tạo hồ sơ</span>
+            <strong>@(Model.CreatedAt?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong>
+        </div>
+    </aside>
+
+    <main class="detail-stack">
+        <section class="card detail-card">
+            <div class="detail-card__header">
+                <h3>Thông tin cá nhân</h3>
+                <span>Thông tin định danh và liên hệ</span>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><span>Số điện thoại</span><strong>@Model.Phone</strong></div>
+                <div class="info-item"><span>Email</span><strong>@(string.IsNullOrWhiteSpace(Model.Email) ? "Chưa cập nhật" : Model.Email)</strong></div>
+                <div class="info-item"><span>CCCD</span><strong>@(string.IsNullOrWhiteSpace(Model.Cccd) ? "Chưa cập nhật" : Model.Cccd)</strong></div>
+                <div class="info-item"><span>Giới tính</span><strong>@GenderText(Model.Gender)</strong></div>
+                <div class="info-item"><span>Ngày sinh</span><strong>@(Model.Dob?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong></div>
+                <div class="info-item"><span>Địa chỉ</span><strong>@Model.Address</strong></div>
+            </div>
+        </section>
+
+        <section class="card detail-card">
+            <div class="detail-card__header">
+                <h3>Thông tin BHYT</h3>
+                <span>Dữ liệu bảo hiểm người bệnh cung cấp</span>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><span>Mã thẻ</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong></div>
+                <div class="info-item"><span>Trạng thái</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceStatus) ? "Chưa xác minh" : Model.HealthInsuranceStatus)</strong></div>
+            </div>
+        </section>
+
+        <section class="card detail-card">
+            <div class="detail-card__header">
+                <h3>Thông tin y tế</h3>
+                <span>Dị ứng, bệnh nền và ghi chú chăm sóc</span>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><span>Nhóm máu</span><strong>@(string.IsNullOrWhiteSpace(Model.BloodType) ? "Chưa cập nhật" : Model.BloodType)</strong></div>
+                <div class="info-item"><span>Dị ứng</span><strong>@(string.IsNullOrWhiteSpace(Model.Allergy) ? "Không ghi nhận" : Model.Allergy)</strong></div>
+                <div class="info-item"><span>Bệnh mãn tính</span><strong>@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</strong></div>
+                <div class="info-item"><span>Ghi chú</span><strong>@(string.IsNullOrWhiteSpace(Model.Notes) ? "Không có ghi chú" : Model.Notes)</strong></div>
+            </div>
+        </section>
+
+        <section class="card detail-card">
+            <div class="detail-card__header">
+                <h3>Lịch hẹn gần đây</h3>
+                <span>Các lần đặt lịch mới nhất</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table admin-table ui-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Chuyên khoa</th>
+                            <th>Bác sĩ</th>
+                            <th>Trạng thái</th>
+                            <th>Triệu chứng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentAppointments.Count == 0)
+                    {
+                        <tr><td colspan="5" class="empty-state">Chưa có lịch hẹn.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.RecentAppointments)
+                        {
+                        <tr>
+                            <td>@(item.AppointmentDate?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
+                            <td>@item.DepartmentName</td>
+                            <td>@item.DoctorName</td>
+                            <td><span class="admin-pill admin-pill--pending">@item.Status</span></td>
+                            <td class="subtle-text">@(string.IsNullOrWhiteSpace(item.Symptoms) ? "Không có" : item.Symptoms)</td>
+                        </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>

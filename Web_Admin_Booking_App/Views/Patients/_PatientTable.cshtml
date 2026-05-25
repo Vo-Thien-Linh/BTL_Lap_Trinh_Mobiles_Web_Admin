@@ -1,0 +1,96 @@
+﻿@model Web_Admin_Booking_App.Models.PatientIndexViewModel
+@using Web_Admin_Booking_App.Models
+@functions {
+    string GenderText(Gender gender) => gender switch
+    {
+        Gender.Male => "Nam",
+        Gender.Female => "Nữ",
+        Gender.Other => "Khác",
+        _ => "Chưa cập nhật"
+    };
+
+    string StatusClass(PatientStatus status) => status switch
+    {
+        PatientStatus.Inactive => "admin-pill admin-pill--paused",
+        PatientStatus.Blocked => "admin-pill admin-pill--failed",
+        _ => "admin-pill admin-pill--active"
+    };
+
+    string StatusText(PatientStatus status) => status switch
+    {
+        PatientStatus.Inactive => "Tạm ngưng",
+        PatientStatus.Blocked => "Bị khóa",
+        _ => "Đang hoạt động"
+    };
+}
+
+<div class="card panel-card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle admin-table ui-table mb-0">
+            <thead>
+                <tr>
+                    <th>Bệnh nhân</th>
+                    <th>Liên hệ</th>
+                    <th class="text-center">Giới tính</th>
+                    <th class="text-center">Ngày sinh</th>
+                    <th class="text-center">BHYT</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+            {
+                <tr>
+                    <td colspan="7" class="empty-state">Không tìm thấy bệnh nhân phù hợp.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                <tr>
+                    <td>
+                        <div class="person-cell rich-person">
+                            <div class="avatar avatar-lg">@item.AvatarText</div>
+                            <div>
+                                <div class="fw-bold">@item.FullName</div>
+                                <div class="subtle-text">Mã: @item.Id</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">@item.Phone</div>
+                        <div class="subtle-text">@(string.IsNullOrWhiteSpace(item.Email) ? "Chưa có email" : item.Email)</div>
+                    </td>
+                    <td class="text-center">@GenderText(item.Gender)</td>
+                    <td class="text-center">@(item.Dob?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</td>
+                    <td class="text-center">
+                        @if (string.IsNullOrWhiteSpace(item.HealthInsuranceNumber))
+                            {
+                        <span class="admin-pill admin-pill--pending">Chưa có</span>
+                            }
+                            else
+                            {
+                        <span class="admin-pill admin-pill--info">@item.HealthInsuranceNumber</span>
+                            }
+                    </td>
+                    <td class="text-center"><span class="@StatusClass(item.Status)">@StatusText(item.Status)</span></td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-soft-primary" asp-controller="Patients" asp-action="Details" asp-route-id="@item.Id">Xem chi tiết</a>
+                    </td>
+                </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footer">
+        <span>Hiển thị @Model.Items.Count trên @Model.TotalCount bệnh nhân</span>
+        <nav class="pager-actions">
+            <a class="btn btn-sm btn-light @(Model.Page <= 1 ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page - 1)">‹</a>
+            <span class="pager-current">@Model.Page / @Model.TotalPages</span>
+            <a class="btn btn-sm btn-light @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page + 1)">›</a>
+        </nav>
+    </div>
+</div>
