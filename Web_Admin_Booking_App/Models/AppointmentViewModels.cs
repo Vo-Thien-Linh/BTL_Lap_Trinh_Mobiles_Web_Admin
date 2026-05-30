@@ -14,7 +14,7 @@ public enum AppointmentStatus
 
 public class AppointmentListItemViewModel
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string DocumentId { get; set; } = string.Empty;
     public string AppointmentCode { get; set; } = string.Empty;
     public string? PatientId { get; set; }

@@ -1,136 +1,84 @@
-@model IReadOnlyList<Web_Admin_Booking_App.Models.PatientListItemViewModel>
+@model Web_Admin_Booking_App.Models.PatientIndexViewModel
+@using Web_Admin_Booking_App.Models
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Bệnh nhân";
+    ViewData["Title"] = "Quản lý bệnh nhân";
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+<section class="page-hero mb-4">
     <div>
-        <div class="fw-bold fs-5">Quản lý bệnh nhân</div>
-        <div class="text-secondary">Danh sách hồ sơ bệnh nhân và thông tin liên hệ</div>
+        <div class="eyebrow">Hồ sơ bệnh nhân</div>
+        <h1>Quản lý bệnh nhân</h1>
+        <p>Tra cứu hồ sơ, liên hệ, BHYT và trạng thái tài khoản bệnh nhân.</p>
+    </div>
+</section>
+
+<div class="admin-stat-grid mb-4">
+    <div class="admin-stat-card">
+        <span class="admin-stat-card__label">Tổng hồ sơ</span>
+        <strong>@Model.TotalCount</strong>
+        <small>Tất cả bệnh nhân phù hợp bộ lọc</small>
+    </div>
+    <div class="admin-stat-card">
+        <span class="admin-stat-card__label">Đang hoạt động</span>
+        <strong>@Model.ActiveCount</strong>
+        <small>Tài khoản có thể sử dụng hệ thống</small>
+    </div>
+    <div class="admin-stat-card">
+        <span class="admin-stat-card__label">Thiếu BHYT</span>
+        <strong>@Model.MissingInsuranceCount</strong>
+        <small>Cần nhắc bệnh nhân cập nhật</small>
     </div>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-lg-6">
-        <div class="input-group">
-            <span class="input-group-text bg-white" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
-                    <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-            </span>
-            <input class="form-control" type="search" placeholder="Tìm theo tên, SĐT, mã bệnh nhân..." />
-        </div>
+<form id="patientFilterForm" asp-controller="Patients" asp-action="Index" method="get" class="filter-toolbar mb-3">
+    <div class="filter-search">
+        <span>⌕</span>
+        <input name="search" value="@Model.Search" class="form-control" autocomplete="off" placeholder="Tìm theo tên, SĐT, email, mã bệnh nhân, BHYT..." />
     </div>
-    <div class="col-lg-3">
-        <select class="form-select">
-            <option selected>Tất cả giới tính</option>
-            <option>Nam</option>
-            <option>Nữ</option>
-        </select>
-    </div>
-    <div class="col-lg-3">
-        <select class="form-select">
-            <option selected>Tất cả trạng thái</option>
-            <option>Đang hoạt động</option>
-            <option>Ngừng theo dõi</option>
-        </select>
-    </div>
+    <select name="genderFilter" class="form-select filter-select">
+        <option value="">Tất cả giới tính</option>
+        <option value="Male" selected="@(Model.GenderFilter == "Male")">Nam</option>
+        <option value="Female" selected="@(Model.GenderFilter == "Female")">Nữ</option>
+        <option value="Other" selected="@(Model.GenderFilter == "Other")">Khác</option>
+        <option value="Unknown" selected="@(Model.GenderFilter == "Unknown")">Chưa cập nhật</option>
+    </select>
+    <select name="statusFilter" class="form-select filter-select">
+        <option value="">Tất cả trạng thái</option>
+        <option value="Active" selected="@(Model.StatusFilter == "Active")">Đang hoạt động</option>
+        <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Tạm ngưng</option>
+        <option value="Blocked" selected="@(Model.StatusFilter == "Blocked")">Bị khóa</option>
+    </select>
+</form>
+
+<div id="patientResults">
+    <partial name="_PatientTable" model="Model" />
 </div>
 
-<div class="card panel-card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0 admin-table">
-                <thead>
-                    <tr class="text-secondary">
-                        <th style="min-width: 260px;">Bệnh nhân</th>
-                        <th>SĐT</th>
-                        <th>Giới tính</th>
-                        <th>Ngày sinh</th>
-                        <th>Trạng thái</th>
-                        <th class="text-end">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var p in Model)
-                {
-                    <tr>
-                        <td>
-                            <div class="person-cell">
-                                <div class="avatar">@Initials(p.FullName)</div>
-                                <div>
-                                    <div class="fw-semibold">@p.FullName</div>
-                                    <div class="text-secondary small">Mã: #@p.Id</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="fw-semibold">@p.Phone</td>
-                        <td>
-                            <span class="badge text-bg-light">@GenderText(p.Gender)</span>
-                        </td>
-                        <td>@p.Dob.ToString("dd/MM/yyyy")</td>
-                        <td>
-                            <span class="admin-pill @StatusClass(p.Status)">@StatusText(p.Status)</span>
-                        </td>
-                        <td class="text-end">
-                            <a class="admin-action admin-action--edit" asp-controller="Patients" asp-action="Details" asp-route-id="@p.Id" aria-label="Xem">
-                                @IconEye()
-                            </a>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+@section Scripts {
+    <script>
+(() => {
+    const form = document.getElementById('patientFilterForm');
+    const target = document.getElementById('patientResults');
+    if (!form || !target) return;
 
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
-            <div class="text-secondary small">Hiển thị 1 - @Model.Count trên @Model.Count bệnh nhân</div>
-            <nav aria-label="Phân trang">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Sau">›</a></li>
-                </ul>
-            </nav>
-        </div>
-    </div>
-</div>
-
-@functions {
-    private static string Initials(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return "";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
-        var first = parts[0].Substring(0, 1).ToUpperInvariant();
-        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
-        return first + last;
-    }
-
-    private static string GenderText(Web_Admin_Booking_App.Models.Gender gender) => gender switch
-    {
-        Web_Admin_Booking_App.Models.Gender.Male => "Nam",
-        Web_Admin_Booking_App.Models.Gender.Female => "Nữ",
-        _ => "-"
+    let timer;
+    const submitRealtime = () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+            const url = `${form.action}?${new URLSearchParams(new FormData(form)).toString()}`;
+            target.classList.add('is-loading');
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            target.innerHTML = await response.text();
+            target.classList.remove('is-loading');
+            window.history.replaceState(null, '', url);
+        }, 300);
     };
 
-    private static string StatusText(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
-    {
-        Web_Admin_Booking_App.Models.PatientStatus.Active => "Đang hoạt động",
-        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "Ngừng theo dõi",
-        _ => "-"
-    };
-
-    private static string StatusClass(Web_Admin_Booking_App.Models.PatientStatus status) => status switch
-    {
-        Web_Admin_Booking_App.Models.PatientStatus.Active => "admin-pill--paid",
-        Web_Admin_Booking_App.Models.PatientStatus.Inactive => "admin-pill--paused",
-        _ => "admin-pill--paused"
-    };
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconEye() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
+    form.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', submitRealtime);
+        el.addEventListener('change', submitRealtime);
+    });
+})();
+    </script>
 }

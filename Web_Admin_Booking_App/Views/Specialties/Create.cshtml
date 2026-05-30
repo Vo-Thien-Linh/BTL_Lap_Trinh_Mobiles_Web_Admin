@@ -4,77 +4,16 @@
     ViewData["Title"] = "Thêm chuyên khoa";
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
     <div>
-        <div class="fw-bold fs-5">Thêm chuyên khoa mới</div>
-        <div class="text-secondary">Tạo mới chuyên khoa trong hệ thống</div>
+        <div class="eyebrow">Danh mục y tế</div>
+        <h1 class="page-title mb-1">Thêm chuyên khoa mới</h1>
+        <p class="text-secondary mb-0">Tạo mới chuyên khoa trong hệ thống.</p>
     </div>
     <a class="btn btn-light" asp-controller="Specialties" asp-action="Index">Quay lại</a>
 </div>
 
-<div class="card panel-card">
-    <div class="card-body">
-        <form asp-action="Create" method="post" class="row g-3">
-            @Html.AntiForgeryToken()
-
-            <div class="col-md-6">
-                <label asp-for="Name" class="form-label"></label>
-                <input asp-for="Name" class="form-control" placeholder="VD: Khoa Tim mạch" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="Code" class="form-label"></label>
-                <input asp-for="Code" class="form-control" placeholder="VD: CARD-001" />
-                <span asp-validation-for="Code" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="HeadDoctor" class="form-label"></label>
-                <input asp-for="HeadDoctor" class="form-control" placeholder="VD: BS. Nguyễn Văn A" />
-                <span asp-validation-for="HeadDoctor" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-3">
-                <label asp-for="DoctorCount" class="form-label"></label>
-                <input asp-for="DoctorCount" class="form-control" type="number" min="0" />
-                <span asp-validation-for="DoctorCount" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-3">
-                <label asp-for="Status" class="form-label"></label>
-                <select asp-for="Status" class="form-select">
-                    <option value="Active">Đang hoạt động</option>
-                    <option value="Paused">Tạm ngưng</option>
-                </select>
-                <span asp-validation-for="Status" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="LocationNote" class="form-label"></label>
-                <input asp-for="LocationNote" class="form-control" placeholder="VD: Tầng 4 - Khu A" />
-                <span asp-validation-for="LocationNote" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="Icon" class="form-label"></label>
-                <select asp-for="Icon" class="form-select">
-                    <option value="Default">Mặc định</option>
-                    <option value="Heart">Tim mạch</option>
-                    <option value="Brain">Thần kinh</option>
-                    <option value="Baby">Nhi</option>
-                    <option value="Lab">Xét nghiệm</option>
-                </select>
-                <span asp-validation-for="Icon" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Lưu</button>
-                <a class="btn btn-outline-secondary" asp-controller="Specialties" asp-action="Index">Hủy</a>
-            </div>
-        </form>
-    </div>
-</div>
+<partial name="_SpecialtyForm" model="Model" />
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

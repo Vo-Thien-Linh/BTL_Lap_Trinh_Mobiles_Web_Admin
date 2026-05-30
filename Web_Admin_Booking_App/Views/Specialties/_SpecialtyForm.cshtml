@@ -1,0 +1,127 @@
+﻿@model Web_Admin_Booking_App.Models.SpecialtyUpsertViewModel
+@using Web_Admin_Booking_App.Models
+@{
+    var isEdit = !string.IsNullOrWhiteSpace(Model.Id);
+}
+
+<div class="card panel-card form-card">
+    <div class="card-body p-4">
+        <form method="post" class="row g-4" id="specialtyUpsertForm">
+            @Html.AntiForgeryToken()
+            @if (isEdit)
+            {
+                <input type="hidden" asp-for="Id" />
+            }
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="col-lg-6">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control form-control-lg js-specialty-name" placeholder="VD: Khoa Tim mạch" list="specialtyNameSuggestions" autocomplete="off" />
+                <datalist id="specialtyNameSuggestions">
+                    @foreach (var name in Model.ExistingNames)
+                    {
+                        <option value="@name"></option>
+                    }
+                </datalist>
+                <div class="form-hint js-name-warning d-none">Tên này đã hoặc gần giống chuyên khoa đang có.</div>
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="Code" class="form-label"></label>
+                <input asp-for="Code" class="form-control form-control-lg js-specialty-code" placeholder="VD: CARD-001" list="specialtyCodeSuggestions" autocomplete="off" />
+                <datalist id="specialtyCodeSuggestions">
+                    @foreach (var code in Model.ExistingCodes)
+                    {
+                        <option value="@code"></option>
+                    }
+                </datalist>
+                <div class="form-hint js-code-warning d-none">Mã khoa này đã hoặc gần giống mã đang có.</div>
+                <span asp-validation-for="Code" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="HeadDoctor" class="form-label"></label>
+                <input asp-for="HeadDoctor" class="form-control" placeholder="Chọn hoặc nhập tên trưởng khoa" list="doctorSuggestions" autocomplete="off" />
+                <datalist id="doctorSuggestions">
+                    @foreach (var doctor in Model.DoctorSuggestions)
+                    {
+                        <option value="@doctor"></option>
+                    }
+                </datalist>
+                <span asp-validation-for="HeadDoctor" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-3">
+                <label asp-for="DoctorCount" class="form-label"></label>
+                <input asp-for="DoctorCount" class="form-control" type="number" min="0" />
+                <span asp-validation-for="DoctorCount" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-3">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" class="form-select">
+                    <option value="Active">Đang hoạt động</option>
+                    <option value="Paused">Tạm ngưng</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="LocationNote" class="form-label"></label>
+                <input asp-for="LocationNote" class="form-control" placeholder="VD: Tầng 4 - Khu A" list="locationSuggestions" autocomplete="off" />
+                <datalist id="locationSuggestions">
+                    @foreach (var location in Model.LocationSuggestions)
+                    {
+                        <option value="@location"></option>
+                    }
+                </datalist>
+                <span asp-validation-for="LocationNote" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="Icon" class="form-label"></label>
+                <select asp-for="Icon" class="form-select">
+                    <option value="General">Mặc định</option>
+                    <option value="Heart">Tim mạch</option>
+                    <option value="Brain">Thần kinh</option>
+                    <option value="Baby">Nhi</option>
+                    <option value="Lab">Xét nghiệm</option>
+                    <option value="Skin">Da liễu</option>
+                    <option value="Eye">Mắt</option>
+                    <option value="Bone">Cơ xương khớp</option>
+                    <option value="Tooth">Răng hàm mặt</option>
+                </select>
+                <span asp-validation-for="Icon" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-2">
+                <button type="submit" class="btn btn-primary px-4">@(isEdit ? "Lưu thay đổi" : "Lưu chuyên khoa")</button>
+                <a class="btn btn-outline-secondary px-4" asp-controller="Specialties" asp-action="Index">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(() => {
+    const existingNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingNames));
+    const existingCodes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingCodes));
+    const normalize = value => (value || '').trim().toLowerCase();
+
+    function bindWarning(inputSelector, warningSelector, values) {
+        const input = document.querySelector(inputSelector);
+        const warning = document.querySelector(warningSelector);
+        if (!input || !warning) return;
+        input.addEventListener('input', () => {
+            const key = normalize(input.value);
+            const matched = key.length >= 2 && values.some(x => normalize(x).includes(key) || normalize(x) === key);
+            warning.classList.toggle('d-none', !matched);
+        });
+    }
+
+    bindWarning('.js-specialty-name', '.js-name-warning', existingNames);
+    bindWarning('.js-specialty-code', '.js-code-warning', existingCodes);
+})();
+</script>

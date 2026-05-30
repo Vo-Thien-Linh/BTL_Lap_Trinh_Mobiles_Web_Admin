@@ -4,7 +4,7 @@ namespace Web_Admin_Booking_App.Models;
 
 public class DoctorListItemViewModel
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string DocumentId { get; set; } = string.Empty;
     public string? UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
@@ -91,6 +91,7 @@ public class DoctorCreateViewModel
 
 public class DoctorDetailsViewModel
 {
+    public string Id { get; set; } = string.Empty;
     public string DocumentId { get; set; } = string.Empty;
     public string? UserId { get; set; }
     public string FullName { get; set; } = string.Empty;

@@ -13,9 +13,7 @@ public class AuthController : Controller
     private readonly FirebaseAuthRestService _authService;
     private readonly FirebaseAdminUserService _adminUserService;
 
-    public AuthController(
-        FirebaseAuthRestService authService,
-        FirebaseAdminUserService adminUserService)
+    public AuthController(FirebaseAuthRestService authService, FirebaseAdminUserService adminUserService)
     {
         _authService = authService;
         _adminUserService = adminUserService;
@@ -25,6 +23,11 @@ public class AuthController : Controller
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("admin"))
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
         ViewData["ReturnUrl"] = returnUrl;
         return View(new LoginViewModel());
     }
@@ -43,11 +46,7 @@ public class AuthController : Controller
 
         try
         {
-            var authResult = await _authService.SignInWithPasswordAsync(
-                model.Email,
-                model.Password
-            );
-
+            var authResult = await _authService.SignInWithPasswordAsync(model.Email, model.Password);
             var adminUser = await _adminUserService.GetAdminUserAsync(authResult.LocalId);
 
             if (adminUser == null ||
@@ -55,25 +54,19 @@ public class AuthController : Controller
                 !string.Equals(adminUser.Status, "active", StringComparison.OrdinalIgnoreCase))
             {
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                return RedirectToAction("AccessDenied", "Auth");
+                return RedirectToAction(nameof(AccessDenied));
             }
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, adminUser.Uid),
-                new Claim(ClaimTypes.Email, adminUser.Email),
-                new Claim(ClaimTypes.Name, string.IsNullOrWhiteSpace(adminUser.FullName)
-                    ? adminUser.Email
-                    : adminUser.FullName),
-                new Claim(ClaimTypes.Role, "admin"),
-                new Claim("role", "admin")
+                new(ClaimTypes.NameIdentifier, adminUser.Uid),
+                new(ClaimTypes.Email, string.IsNullOrWhiteSpace(adminUser.Email) ? model.Email : adminUser.Email),
+                new(ClaimTypes.Name, string.IsNullOrWhiteSpace(adminUser.FullName) ? model.Email : adminUser.FullName),
+                new(ClaimTypes.Role, "admin"),
+                new("role", "admin")
             };
 
-            var identity = new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
             await HttpContext.SignInAsync(
@@ -83,8 +76,7 @@ public class AuthController : Controller
                 {
                     IsPersistent = model.RememberMe,
                     ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
-                }
-            );
+                });
 
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
             {
@@ -120,8 +112,8 @@ public class AuthController : Controller
         try
         {
             await _authService.SendPasswordResetEmailAsync(model.Email);
-             TempData["SuccessMessage"] = "Gửi email đặt lại mật khẩu thành công. Vui lòng kiểm tra hộp thư hoặc mục Spam.";
-            return View(new ForgotPasswordViewModel());
+            TempData["SuccessMessage"] = "Gửi email đặt lại mật khẩu thành công. Vui lòng kiểm tra hộp thư hoặc mục Spam.";
+            return RedirectToAction(nameof(ForgotPassword));
         }
         catch (Exception ex)
         {
@@ -142,6 +134,6 @@ public class AuthController : Controller
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToAction("Login", "Auth");
+        return RedirectToAction(nameof(Login));
     }
 }

@@ -18,7 +18,7 @@ public enum PaymentMethod
 
 public class TransactionListItemViewModel
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string InvoiceCode { get; set; } = string.Empty;
     public string PatientName { get; set; } = string.Empty;
     public string ServiceName { get; set; } = string.Empty;
