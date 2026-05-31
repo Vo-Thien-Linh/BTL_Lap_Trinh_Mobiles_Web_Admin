@@ -1,5 +1,4 @@
 @model Web_Admin_Booking_App.Models.PatientIndexViewModel
-@using Web_Admin_Booking_App.Models
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Quản lý bệnh nhân";
@@ -29,6 +28,11 @@
         <strong>@Model.MissingInsuranceCount</strong>
         <small>Cần nhắc bệnh nhân cập nhật</small>
     </div>
+    <div class="admin-stat-card">
+        <span class="admin-stat-card__label">Chờ duyệt BHYT</span>
+        <strong>@Model.PendingInsuranceCount</strong>
+        <small>Hồ sơ cần admin xét duyệt</small>
+    </div>
 </div>
 
 <form id="patientFilterForm" asp-controller="Patients" asp-action="Index" method="get" class="filter-toolbar mb-3">
@@ -49,6 +53,16 @@
         <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Tạm ngưng</option>
         <option value="Blocked" selected="@(Model.StatusFilter == "Blocked")">Bị khóa</option>
     </select>
+    <select name="insuranceFilter" class="form-select filter-select">
+        <option value="">Tất cả BHYT</option>
+        <option value="pending" selected="@(Model.InsuranceFilter == "pending")">Chờ duyệt BHYT</option>
+        <option value="approved" selected="@(Model.InsuranceFilter == "approved")">Đã duyệt BHYT</option>
+        <option value="rejected" selected="@(Model.InsuranceFilter == "rejected")">Từ chối BHYT</option>
+        <option value="missing" selected="@(Model.InsuranceFilter == "missing")">Thiếu BHYT</option>
+    </select>
+    <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")" data-filter-error>
+        @Model.FilterError
+    </div>
 </form>
 
 <div id="patientResults">
@@ -63,9 +77,28 @@
     if (!form || !target) return;
 
     let timer;
+    const error = form.querySelector('[data-filter-error]');
+
+    const setError = (message) => {
+        if (!error) return;
+        error.textContent = message || '';
+        error.classList.toggle('is-visible', Boolean(message));
+        form.querySelector('[name="search"]')?.classList.toggle('is-invalid', Boolean(message));
+    };
+
+    const validateFilters = () => {
+        const search = form.querySelector('[name="search"]')?.value?.trim() || '';
+        if (search.length > 100) return 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.';
+        return '';
+    };
+
     const submitRealtime = () => {
         clearTimeout(timer);
         timer = setTimeout(async () => {
+            const validationMessage = validateFilters();
+            setError(validationMessage);
+            if (validationMessage) return;
+
             const url = `${form.action}?${new URLSearchParams(new FormData(form)).toString()}`;
             target.classList.add('is-loading');
             const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });

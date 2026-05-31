@@ -19,6 +19,15 @@
         PatientStatus.Blocked => "Bị khóa",
         _ => "Đang hoạt động"
     };
+
+    string InsuranceStatusText(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => "Chờ duyệt",
+        "approved" => "Đã duyệt",
+        "rejected" => "Từ chối",
+        "missing" or "" or null => "Chưa cập nhật",
+        _ => status
+    };
 }
 
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
@@ -39,18 +48,9 @@
 
         <div class="summary-divider"></div>
 
-        <div class="summary-item">
-            <span>BHYT</span>
-            <strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong>
-        </div>
-        <div class="summary-item">
-            <span>Trạng thái BHYT</span>
-            <strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceStatus) ? "Chưa xác minh" : Model.HealthInsuranceStatus)</strong>
-        </div>
-        <div class="summary-item">
-            <span>Ngày tạo hồ sơ</span>
-            <strong>@(Model.CreatedAt?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong>
-        </div>
+        <div class="summary-item"><span>BHYT</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong></div>
+        <div class="summary-item"><span>Trạng thái BHYT</span><strong>@InsuranceStatusText(Model.HealthInsuranceStatus)</strong></div>
+        <div class="summary-item"><span>Ngày tạo hồ sơ</span><strong>@(Model.CreatedAt?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong></div>
     </aside>
 
     <main class="detail-stack">
@@ -76,8 +76,30 @@
             </div>
             <div class="info-grid">
                 <div class="info-item"><span>Mã thẻ</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong></div>
-                <div class="info-item"><span>Trạng thái</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceStatus) ? "Chưa xác minh" : Model.HealthInsuranceStatus)</strong></div>
+                <div class="info-item"><span>Trạng thái</span><strong>@InsuranceStatusText(Model.HealthInsuranceStatus)</strong></div>
             </div>
+            @if (string.Equals(Model.HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="d-flex flex-wrap gap-2 mt-3 insurance-actions">
+                    <form asp-controller="Patients" asp-action="UpdateInsuranceStatus" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="status" value="approved" />
+                        <button type="submit" class="btn btn-success">Xác nhận</button>
+                    </form>
+                    <form asp-controller="Patients" asp-action="UpdateInsuranceStatus" method="post" class="d-flex flex-wrap gap-2" id="rejectInsuranceForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="status" value="rejected" />
+                        <input name="rejectReason" class="form-control d-none" style="min-width: 260px;" placeholder="Lý do từ chối (có thể để trống)" />
+                        <button type="button" class="btn btn-outline-danger" id="showRejectReason">Từ chối</button>
+                    </form>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.HealthInsuranceRejectReason))
+            {
+                <div class="alert alert-warning mt-3 mb-0">Lý do từ chối: @Model.HealthInsuranceRejectReason</div>
+            }
         </section>
 
         <section class="card detail-card">
@@ -88,48 +110,33 @@
             <div class="info-grid">
                 <div class="info-item"><span>Nhóm máu</span><strong>@(string.IsNullOrWhiteSpace(Model.BloodType) ? "Chưa cập nhật" : Model.BloodType)</strong></div>
                 <div class="info-item"><span>Dị ứng</span><strong>@(string.IsNullOrWhiteSpace(Model.Allergy) ? "Không ghi nhận" : Model.Allergy)</strong></div>
-                <div class="info-item"><span>Bệnh mãn tính</span><strong>@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</strong></div>
+                <div class="info-item"><span>Bệnh mạn tính</span><strong>@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</strong></div>
                 <div class="info-item"><span>Ghi chú</span><strong>@(string.IsNullOrWhiteSpace(Model.Notes) ? "Không có ghi chú" : Model.Notes)</strong></div>
-            </div>
-        </section>
-
-        <section class="card detail-card">
-            <div class="detail-card__header">
-                <h3>Lịch hẹn gần đây</h3>
-                <span>Các lần đặt lịch mới nhất</span>
-            </div>
-            <div class="table-responsive">
-                <table class="table admin-table ui-table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Ngày</th>
-                            <th>Chuyên khoa</th>
-                            <th>Bác sĩ</th>
-                            <th>Trạng thái</th>
-                            <th>Triệu chứng</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.RecentAppointments.Count == 0)
-                    {
-                        <tr><td colspan="5" class="empty-state">Chưa có lịch hẹn.</td></tr>
-                    }
-                    else
-                    {
-                        foreach (var item in Model.RecentAppointments)
-                        {
-                        <tr>
-                            <td>@(item.AppointmentDate?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
-                            <td>@item.DepartmentName</td>
-                            <td>@item.DoctorName</td>
-                            <td><span class="admin-pill admin-pill--pending">@item.Status</span></td>
-                            <td class="subtle-text">@(string.IsNullOrWhiteSpace(item.Symptoms) ? "Không có" : item.Symptoms)</td>
-                        </tr>
-                        }
-                    }
-                    </tbody>
-                </table>
             </div>
         </section>
     </main>
 </div>
+
+@section Scripts {
+    <script>
+(() => {
+    const form = document.getElementById('rejectInsuranceForm');
+    const input = form?.querySelector('[name="rejectReason"]');
+    const button = document.getElementById('showRejectReason');
+    if (!form || !input || !button) return;
+
+    let readyToSubmit = false;
+    button.addEventListener('click', () => {
+        if (!readyToSubmit) {
+            input.classList.remove('d-none');
+            input.focus();
+            button.textContent = 'Gửi từ chối';
+            readyToSubmit = true;
+            return;
+        }
+
+        form.submit();
+    });
+})();
+    </script>
+}

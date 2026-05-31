@@ -1,4 +1,4 @@
-@model IReadOnlyList<Web_Admin_Booking_App.Models.MedicalRecordListItemViewModel>
+@model Web_Admin_Booking_App.Models.MedicalRecordsIndexViewModel
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Bệnh án";
@@ -11,39 +11,50 @@
     </div>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-lg-7">
-        <div class="input-group">
-            <span class="input-group-text bg-white" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
-                    <path d="M11.2 11.2L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-            </span>
-            <input class="form-control" type="search" placeholder="Tìm theo mã bệnh án, tên bệnh nhân, bác sĩ..." />
-        </div>
+<form id="medicalRecordFilterForm" method="get" class="medical-filter mb-3" autocomplete="off" asp-controller="MedicalRecords" asp-action="Index">
+    <div class="medical-filter__field">
+        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="Tìm mã bệnh án, bệnh nhân, bác sĩ..." />
     </div>
-    <div class="col-lg-3">
-        <select class="form-select">
-            <option selected>Tất cả trạng thái</option>
-            <option>Chờ duyệt</option>
-            <option>Đã duyệt</option>
-            <option>Đã hủy</option>
+    <div class="medical-filter__field">
+        <select name="statusFilter" class="form-select">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ duyệt</option>
+            <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Đã duyệt</option>
+            <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Đã hủy</option>
         </select>
     </div>
-    <div class="col-lg-2">
-        <input type="date" class="form-control" />
+    <div class="medical-date-range" data-date-range data-has-date-filter="@((Model.FromDate.HasValue || Model.ToDate.HasValue).ToString().ToLowerInvariant())">
+        <button class="form-control medical-date-range__button" type="button" data-date-range-toggle>
+            <span data-date-range-label>@DateRangeLabel(Model.FromDate, Model.ToDate)</span>
+        </button>
+        <div class="medical-date-range__popover" data-date-range-panel>
+            <div class="payment-date-filter__presets">
+                <button type="button" class="btn btn-sm btn-light" data-all-dates>Tất cả ngày</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-custom-dates>Chọn khoảng ngày</button>
+            </div>
+            <div data-custom-date-fields>
+                <label class="form-label small text-secondary">Từ ngày</label>
+                <input name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-date-start />
+            </div>
+            <div data-custom-date-fields>
+                <label class="form-label small text-secondary">Đến ngày</label>
+                <input name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-date-end />
+            </div>
+        </div>
     </div>
-</div>
+    <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")" data-filter-error>
+        @Model.FilterError
+    </div>
+</form>
 
-<div class="card panel-card">
+<div id="medicalRecordsResults" class="card panel-card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table align-middle mb-0 admin-table">
                 <thead>
                     <tr class="text-secondary">
-                        <th style="min-width: 140px;">Mã</th>
-                        <th style="min-width: 220px;">Bệnh nhân</th>
+                        <th>Mã bệnh án</th>
+                        <th>Bệnh nhân</th>
                         <th>Bác sĩ</th>
                         <th>Chuyên khoa</th>
                         <th>Ngày tạo</th>
@@ -52,62 +63,224 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var r in Model)
+                @if (Model.Items.Count == 0)
                 {
                     <tr>
-                        <td class="fw-semibold">@r.RecordCode</td>
-                        <td>
-                            <div class="person-cell">
-                                <div class="avatar">@Initials(r.PatientName)</div>
-                                <div>
-                                    <div class="fw-semibold">@r.PatientName</div>
-                                    <div class="text-secondary small">ID: #@r.Id</div>
+                        <td colspan="7">
+                            <div class="empty-state empty-state--rich">
+                                <div class="empty-state__icon" aria-hidden="true">
+                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2h5.5A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                                        <path d="m15.5 15.5 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                        <circle cx="13" cy="13" r="3.2" stroke="currentColor" stroke-width="1.8" />
+                                    </svg>
                                 </div>
+                                <div class="empty-state__title">Không tìm thấy bệnh án phù hợp với bộ lọc.</div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-medical-filters>Xóa bộ lọc</button>
                             </div>
                         </td>
-                        <td class="text-secondary">@r.DoctorName</td>
-                        <td>@r.SpecialtyName</td>
-                        <td>
-                            <div class="fw-semibold">@r.CreatedAt.ToString("dd/MM/yyyy")</div>
-                            <div class="text-secondary small">@r.CreatedAt.ToString("HH:mm")</div>
-                        </td>
-                        <td>
-                            <span class="badge @BadgeFor(r.Status)">@StatusText(r.Status)</span>
-                        </td>
-                        <td class="text-end">
-                            <a class="admin-action admin-action--edit" asp-controller="MedicalRecords" asp-action="Details" asp-route-id="@r.Id" aria-label="Xem">
-                                @IconEye()
-                            </a>
-                        </td>
                     </tr>
+                }
+                else
+                {
+                    foreach (var r in Model.Items)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@r.RecordCode</td>
+                            <td>
+                                <div class="person-cell">
+                                    <div class="avatar">@Initials(r.PatientName)</div>
+                                    <div>
+                                        <div class="fw-semibold">@r.PatientName</div>
+                                        <div class="text-secondary small">ID: @r.PatientId</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-secondary">@r.DoctorName</td>
+                            <td>@r.SpecialtyName</td>
+                            <td>
+                                <div class="fw-semibold">@r.CreatedAt.ToString("dd/MM/yyyy")</div>
+                                <div class="text-secondary small">@r.CreatedAt.ToString("HH:mm")</div>
+                            </td>
+                            <td><span class="badge @BadgeFor(r.Status)">@StatusText(r.Status)</span></td>
+                            <td class="text-end">
+                                <a class="admin-action" asp-controller="MedicalRecords" asp-action="Details" asp-route-id="@r.Id" aria-label="Xem">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                                        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2" />
+                                    </svg>
+                                </a>
+                            </td>
+                        </tr>
+                    }
                 }
                 </tbody>
             </table>
         </div>
-
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
-            <div class="text-secondary small">Hiển thị 1 - @Model.Count trên @Model.Count bệnh án</div>
-            <nav aria-label="Phân trang">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Sau">›</a></li>
-                </ul>
+            <div class="text-secondary small">Hiển thị @Model.StartItem - @Model.EndItem trên tổng số @Model.TotalCount bệnh án</div>
+            <nav class="pager-actions">
+                <a class="btn btn-sm btn-light @(Model.Page <= 1 ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-statusFilter="@Model.StatusFilter" asp-route-fromDate="@Model.FromDate?.ToString("yyyy-MM-dd")" asp-route-toDate="@Model.ToDate?.ToString("yyyy-MM-dd")" asp-route-page="@(Model.Page - 1)">‹</a>
+                <span class="pager-current">@Model.Page / @Model.TotalPages</span>
+                <a class="btn btn-sm btn-light @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-statusFilter="@Model.StatusFilter" asp-route-fromDate="@Model.FromDate?.ToString("yyyy-MM-dd")" asp-route-toDate="@Model.ToDate?.ToString("yyyy-MM-dd")" asp-route-page="@(Model.Page + 1)">›</a>
             </nav>
         </div>
     </div>
 </div>
 
+@section Scripts {
+    <script>
+(() => {
+    const form = document.getElementById('medicalRecordFilterForm');
+    const results = document.getElementById('medicalRecordsResults');
+    const range = document.querySelector('[data-date-range]');
+    const toggle = document.querySelector('[data-date-range-toggle]');
+    const label = document.querySelector('[data-date-range-label]');
+    const start = document.querySelector('[data-date-start]');
+    const end = document.querySelector('[data-date-end]');
+    const allDates = document.querySelector('[data-all-dates]');
+    const customDates = document.querySelector('[data-custom-dates]');
+    const customFields = document.querySelectorAll('[data-custom-date-fields]');
+    const error = document.querySelector('[data-filter-error]');
+    if (!form || !results) return;
+
+    let timer;
+    let dateMode = range?.dataset.hasDateFilter === 'true' ? 'custom' : 'all';
+    const allDatesLabel = 'Tất cả ngày';
+    const customDatesLabel = 'Chọn khoảng ngày';
+
+    const getBasePath = () => {
+        const action = form.getAttribute('action');
+        return action && action.trim() ? action : window.location.pathname;
+    };
+
+    const buildUrl = () => {
+        const params = new URLSearchParams(new FormData(form));
+        params.delete('page');
+        if (dateMode !== 'custom') {
+            params.delete('fromDate');
+            params.delete('toDate');
+        }
+        for (const [key, value] of [...params.entries()]) {
+            if (!value) params.delete(key);
+        }
+        const query = params.toString();
+        const basePath = getBasePath();
+        return query ? `${basePath}?${query}` : basePath;
+    };
+
+    const updateRangeLabel = () => {
+        if (!label || !start || !end) return;
+        customFields.forEach(field => field.classList.toggle('d-none', dateMode !== 'custom'));
+        if (dateMode !== 'custom') {
+            label.textContent = allDatesLabel;
+            return;
+        }
+
+        if (start.value && end.value) label.textContent = `${start.value} - ${end.value}`;
+        else if (start.value) label.textContent = `Từ ${start.value}`;
+        else if (end.value) label.textContent = `Đến ${end.value}`;
+        else label.textContent = customDatesLabel;
+    };
+
+    const setError = (message) => {
+        if (!error) return;
+        error.textContent = message || '';
+        error.classList.toggle('is-visible', Boolean(message));
+        [start, end].forEach(input => input?.classList.toggle('is-invalid', Boolean(message)));
+    };
+
+    const validateFilters = () => {
+        const search = form.querySelector('[name="search"]')?.value?.trim() || '';
+        if (search.length > 100) return 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.';
+        if (dateMode === 'custom' && start?.value && end?.value && end.value < start.value) return 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+        return '';
+    };
+
+    const fetchResults = async () => {
+        const validationMessage = validateFilters();
+        setError(validationMessage);
+        if (validationMessage) return;
+
+        const url = buildUrl();
+        results.classList.add('is-loading');
+        try {
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nextResults = doc.getElementById('medicalRecordsResults');
+            if (nextResults) {
+                results.innerHTML = nextResults.innerHTML;
+                window.history.replaceState(null, '', url);
+            }
+        } finally {
+            results.classList.remove('is-loading');
+        }
+    };
+
+    const scheduleFetch = (delay = 350) => {
+        clearTimeout(timer);
+        timer = setTimeout(fetchResults, delay);
+    };
+
+    form.querySelector('[name="search"]')?.addEventListener('input', () => scheduleFetch(350));
+    form.querySelector('[name="statusFilter"]')?.addEventListener('change', () => scheduleFetch(0));
+    [start, end].forEach(input => input?.addEventListener('change', () => {
+        dateMode = 'custom';
+        updateRangeLabel();
+        scheduleFetch(0);
+    }));
+
+    toggle?.addEventListener('click', () => range?.classList.toggle('is-open'));
+    allDates?.addEventListener('click', () => {
+        dateMode = 'all';
+        if (start) start.value = '';
+        if (end) end.value = '';
+        setError('');
+        updateRangeLabel();
+        range?.classList.remove('is-open');
+        scheduleFetch(0);
+    });
+    customDates?.addEventListener('click', () => {
+        dateMode = 'custom';
+        updateRangeLabel();
+        start?.focus();
+    });
+    document.addEventListener('click', event => {
+        if (range && !range.contains(event.target)) range.classList.remove('is-open');
+    });
+
+    results.addEventListener('click', event => {
+        if (!event.target.closest('[data-clear-medical-filters]')) return;
+        form.reset();
+        dateMode = 'all';
+        if (start) start.value = '';
+        if (end) end.value = '';
+        updateRangeLabel();
+        setError('');
+        scheduleFetch(0);
+    });
+
+    updateRangeLabel();
+})();
+    </script>
+}
+
 @functions {
+    private static string DateRangeLabel(DateOnly? fromDate, DateOnly? toDate)
+    {
+        if (fromDate.HasValue && toDate.HasValue) return $"{fromDate:yyyy-MM-dd} - {toDate:yyyy-MM-dd}";
+        if (fromDate.HasValue) return $"Từ {fromDate:yyyy-MM-dd}";
+        if (toDate.HasValue) return $"Đến {toDate:yyyy-MM-dd}";
+        return "Tất cả ngày";
+    }
+
     private static string Initials(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "";
+        if (string.IsNullOrWhiteSpace(name)) return "BA";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return "";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
-        var first = parts[0].Substring(0, 1).ToUpperInvariant();
-        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
-        return first + last;
+        if (parts.Length == 1) return parts[0][..1].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
     private static string StatusText(Web_Admin_Booking_App.Models.MedicalRecordStatus status) => status switch
@@ -125,7 +298,4 @@
         Web_Admin_Booking_App.Models.MedicalRecordStatus.Cancelled => "text-bg-danger",
         _ => "text-bg-light"
     };
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconEye() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
 }

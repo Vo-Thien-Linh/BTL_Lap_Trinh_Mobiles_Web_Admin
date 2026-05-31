@@ -1,244 +1,351 @@
 @model Web_Admin_Booking_App.Models.PaymentsIndexViewModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Quản lý Thanh toán";
+    ViewData["Title"] = "Quản lý thanh toán";
 }
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
     <div>
-        <div class="fw-bold fs-5">Quản lý Thanh toán</div>
-        <div class="text-secondary">Theo dõi và quản lý các giao dịch tài chính của bệnh viện</div>
+        <div class="fw-bold fs-5">Quản lý thanh toán</div>
+        <div class="text-secondary">Theo dõi và quản lý giao dịch tài chính của bệnh viện</div>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary">Xuất báo cáo</button>
-        <button type="button" class="btn btn-primary">+ Thu tiền dịch vụ</button>
+        <a id="exportInvoicePdf"
+           class="btn btn-outline-primary d-none"
+           href="#"
+           target="_blank"
+           rel="noopener"
+           data-receipt-base-url="@Url.Action("ReceiptPdf", "Payments")">
+            Xuất hóa đơn PDF
+        </a>
     </div>
 </div>
 
 <div class="row g-3 mb-3">
     <div class="col-md-6 col-lg-4">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                        <div class="stat-card__label text-uppercase">Tổng doanh thu</div>
-                        <div class="stat-card__value">@Vnd(Model.TotalRevenue)</div>
-                        <div class="stat-card__hint text-danger">+@Model.TotalRevenueChangePercent.ToString("0.#")%</div>
-                    </div>
-                    <div class="admin-kpi-icon admin-kpi-icon--primary" aria-hidden="true">
-                        @IconCard()
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Tổng doanh thu</div><div class="stat-card__value">@Vnd(Model.TotalRevenue)</div><div class="stat-card__hint text-danger">+@Model.TotalRevenueChangePercent.ToString("0.#")%</div></div></div>
     </div>
-
     <div class="col-md-6 col-lg-4">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                        <div class="stat-card__label text-uppercase">Giao dịch thành công</div>
-                        <div class="stat-card__value">@Model.SuccessfulToday</div>
-                        <div class="stat-card__hint text-secondary">Hôm nay</div>
-                    </div>
-                    <div class="admin-kpi-icon admin-kpi-icon--secondary" aria-hidden="true">
-                        @IconCheckCircle()
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dịch thành công</div><div class="stat-card__value">@Model.SuccessfulToday</div><div class="stat-card__hint text-secondary">Hôm nay</div></div></div>
     </div>
-
     <div class="col-md-12 col-lg-4">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                        <div class="stat-card__label text-uppercase">Giao dịch chờ xử lý</div>
-                        <div class="stat-card__value">@Model.PendingCount</div>
-                        <div class="stat-card__hint text-danger">@Model.PendingNeedsApprovalCount cần duyệt</div>
-                    </div>
-                    <div class="admin-kpi-icon admin-kpi-icon--danger" aria-hidden="true">
-                        @IconClock()
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dịch chờ xử lý</div><div class="stat-card__value">@Model.PendingCount</div><div class="stat-card__hint text-danger">@Model.PendingNeedsApprovalCount cần duyệt</div></div></div>
     </div>
 </div>
 
-<div class="card panel-card mb-3">
-    <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <div class="text-secondary small">Thời gian:</div>
-                <select class="form-select form-select-sm admin-inline-select" style="width: 140px;">
-                    <option selected>@Model.PeriodLabel</option>
-                    <option>Hôm nay</option>
-                    <option>30 ngày qua</option>
-                </select>
-
-                <div class="text-secondary small ms-2">Trạng thái:</div>
-                <div class="admin-chip-group" role="group" aria-label="Trạng thái">
-                    <button type="button" class="btn btn-sm btn-primary">Tất cả</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Đã thanh toán</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Chờ xử lý</button>
-                </div>
+<form method="get" id="paymentFilterForm" class="payment-filter mb-3" autocomplete="off" asp-controller="Payments" asp-action="Index">
+    <div class="payment-filter__search">
+        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="Tìm mã hóa đơn, bệnh nhân, dịch vụ..." />
+    </div>
+    <select name="sourceFilter" class="form-select">
+        <option value="">Tất cả nguồn</option>
+        <option value="Payments" selected="@(Model.SourceFilter == "Payments")">Payments</option>
+        <option value="Invoices" selected="@(Model.SourceFilter == "Invoices")">Invoices</option>
+    </select>
+    <select name="statusFilter" class="form-select">
+        <option value="">Tất cả trạng thái</option>
+        <option value="Paid" selected="@(Model.StatusFilter == "Paid")">Đã thanh toán</option>
+        <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ xử lý</option>
+        <option value="Failed" selected="@(Model.StatusFilter == "Failed")">Thất bại</option>
+    </select>
+    <select name="methodFilter" class="form-select">
+        <option value="">Tất cả phương thức</option>
+        <option value="CreditCard" selected="@(Model.MethodFilter == "CreditCard")">Thẻ</option>
+        <option value="AtmCard" selected="@(Model.MethodFilter == "AtmCard")">Thẻ ATM</option>
+        <option value="Cash" selected="@(Model.MethodFilter == "Cash")">Tiền mặt</option>
+        <option value="BankTransfer" selected="@(Model.MethodFilter == "BankTransfer")">Chuyển khoản</option>
+        <option value="MoMo" selected="@(Model.MethodFilter == "MoMo")">MoMo</option>
+    </select>
+    <div class="medical-date-range payment-date-filter" data-payment-date-range data-has-date-filter="@((Model.FromDate.HasValue || Model.ToDate.HasValue).ToString().ToLowerInvariant())">
+        <button class="form-control medical-date-range__button" type="button" data-payment-date-range-toggle>
+            <span data-payment-date-range-label>@DateRangeLabel(Model.FromDate, Model.ToDate)</span>
+        </button>
+        <div class="medical-date-range__popover" data-payment-date-range-panel>
+            <div class="payment-date-filter__presets">
+                <button type="button" class="btn btn-sm btn-light" data-payment-all-dates>Tất cả ngày</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-payment-custom-dates>Chọn khoảng ngày</button>
             </div>
-
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-light" aria-label="Bộ lọc">
-                    @IconFilter()
-                </button>
-                <button type="button" class="btn btn-sm btn-light" aria-label="Chế độ xem">
-                    @IconGrid()
-                </button>
+            <div data-payment-custom-date-fields>
+                <label class="form-label small text-secondary">Từ ngày</label>
+                <input name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-payment-date-start />
+            </div>
+            <div data-payment-custom-date-fields>
+                <label class="form-label small text-secondary">Đến ngày</label>
+                <input name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-payment-date-end />
             </div>
         </div>
     </div>
-</div>
+    <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")" data-filter-error>
+        @Model.FilterError
+    </div>
+</form>
 
-<div class="card panel-card">
+<div id="paymentResults" class="card panel-card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table align-middle mb-0 admin-table">
                 <thead>
                     <tr class="text-secondary">
-                        <th style="min-width: 140px;">Mã hóa đơn</th>
-                        <th style="min-width: 220px;">Bệnh nhân</th>
+                        <th class="payment-select-col">Chọn</th>
+                        <th>Mã hóa đơn</th>
+                        <th>Bệnh nhân</th>
                         <th>Dịch vụ</th>
                         <th>Số tiền</th>
                         <th>Ngày thanh toán</th>
                         <th>Phương thức</th>
                         <th>Trạng thái</th>
-                        <th class="text-end"> </th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var t in Model.Transactions)
+                @if (Model.Transactions.Count == 0)
                 {
                     <tr>
-                        <td>
-                            <a href="#" class="admin-link">@t.InvoiceCode</a>
-                        </td>
-                        <td>
-                            <div class="person-cell">
-                                <div class="avatar">@Initials(t.PatientName)</div>
-                                <div>
-                                    <div class="fw-semibold">@t.PatientName</div>
+                        <td colspan="8">
+                            <div class="empty-state empty-state--rich">
+                                <div class="empty-state__icon" aria-hidden="true">
+                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="4" y="6" width="16" height="12" rx="3" stroke="currentColor" stroke-width="1.8" />
+                                        <path d="M4 10h16M8 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                    </svg>
                                 </div>
+                                <div class="empty-state__title">Không tìm thấy giao dịch phù hợp với bộ lọc.</div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-payment-filters>Xóa bộ lọc</button>
                             </div>
-                        </td>
-                        <td>@t.ServiceName</td>
-                        <td class="fw-semibold">@Vnd(t.AmountVnd)</td>
-                        <td>
-                            <div class="fw-semibold">@t.PaidAt.ToString("dd/MM/yyyy")</div>
-                            <div class="text-secondary small">@t.PaidAt.ToString("HH:mm")</div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="text-secondary">@MethodText(t.Method)</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="admin-pill @StatusClass(t.Status)">@StatusText(t.Status)</span>
-                        </td>
-                        <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-light" aria-label="Tùy chọn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <circle cx="6" cy="12" r="1.6" />
-                                    <circle cx="12" cy="12" r="1.6" />
-                                    <circle cx="18" cy="12" r="1.6" />
-                                </svg>
-                            </button>
                         </td>
                     </tr>
+                }
+                else
+                {
+                    foreach (var t in Model.Transactions)
+                    {
+                        <tr class="payment-select-row" data-payment-row>
+                            <td class="payment-select-col">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="selectedInvoice"
+                                       value="@t.Id"
+                                       data-invoice-id="@t.Id"
+                                       data-source-collection="@t.SourceCollection"
+                                       aria-label="Chọn hóa đơn @t.InvoiceCode" />
+                            </td>
+                            <td><a href="#" class="admin-link">@t.InvoiceCode</a></td>
+                            <td><div class="person-cell"><div class="avatar">@Initials(t.PatientName)</div><div class="fw-semibold">@ValueOrDash(t.PatientName)</div></div></td>
+                            <td>@ValueOrDash(t.ServiceName)</td>
+                            <td class="fw-semibold">@Vnd(t.AmountVnd)</td>
+                            <td><div class="fw-semibold">@t.PaidAt.ToString("dd/MM/yyyy")</div><div class="text-secondary small">@t.PaidAt.ToString("HH:mm")</div></td>
+                            <td>@MethodText(t.Method)</td>
+                            <td><span class="admin-pill @StatusClass(t.Status)">@StatusText(t.Status)</span></td>
+                        </tr>
+                    }
                 }
                 </tbody>
             </table>
         </div>
-
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
-            <div class="text-secondary small">Hiển thị 1 - @Model.Transactions.Count trong tổng số @Model.SuccessfulToday giao dịch</div>
-            <nav aria-label="Phân trang">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled"><a class="page-link" href="#" aria-label="Trước">‹</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item disabled"><a class="page-link" href="#">…</a></li>
-                    <li class="page-item"><a class="page-link" href="#" aria-label="Sau">›</a></li>
-                </ul>
-            </nav>
+            <div class="text-secondary small">Hiển thị @Model.Transactions.Count giao dịch</div>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mt-3">
-    <div class="col-lg-6">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="fw-bold">Cơ cấu phương thức thanh toán</div>
-                    <a class="admin-link" href="#" aria-label="Mở">@IconExternal()</a>
-                </div>
-                <div class="admin-chart-box mt-3">
-                    <div class="admin-chart-placeholder">
-                        <div class="admin-chart-placeholder__dot"></div>
-                        <div class="text-secondary small">Thẻ tín dụng dẫn đầu (40%)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+@section Scripts {
+    <script>
+(() => {
+    const form = document.getElementById('paymentFilterForm');
+    const results = document.getElementById('paymentResults');
+    const exportButton = document.getElementById('exportInvoicePdf');
+    const range = document.querySelector('[data-payment-date-range]');
+    const toggle = document.querySelector('[data-payment-date-range-toggle]');
+    const label = document.querySelector('[data-payment-date-range-label]');
+    const start = document.querySelector('[data-payment-date-start]');
+    const end = document.querySelector('[data-payment-date-end]');
+    const allDates = document.querySelector('[data-payment-all-dates]');
+    const customDates = document.querySelector('[data-payment-custom-dates]');
+    const customFields = document.querySelectorAll('[data-payment-custom-date-fields]');
+    const error = form?.querySelector('[data-filter-error]');
+    if (!form || !results) return;
 
-    <div class="col-lg-6">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="fw-bold">Biến động doanh thu (7 ngày)</div>
-                    <a class="admin-link" href="#" aria-label="Mở">@IconExternal()</a>
-                </div>
-                <div class="admin-chart-box mt-3 p-2">
-                    <svg viewBox="0 0 700 260" width="100%" height="100%" role="img" aria-label="Biểu đồ doanh thu">
-                        <rect x="0" y="0" width="700" height="260" fill="transparent" />
-                        <line x1="40" y1="220" x2="680" y2="220" stroke="rgba(0,0,0,0.15)" />
-                        <g fill="var(--bs-primary)">
-                            <rect x="70" y="110" width="55" height="110" rx="8" />
-                            <rect x="160" y="130" width="55" height="90" rx="8" opacity="0.85" />
-                            <rect x="250" y="95" width="55" height="125" rx="8" />
-                            <rect x="340" y="160" width="55" height="60" rx="8" opacity="0.85" />
-                            <rect x="430" y="70" width="55" height="150" rx="8" />
-                            <rect x="520" y="135" width="55" height="85" rx="8" opacity="0.85" />
-                            <rect x="610" y="115" width="55" height="105" rx="8" />
-                        </g>
-                        <g font-size="12" fill="rgba(0,0,0,0.55)">
-                            <text x="88" y="245">T2</text>
-                            <text x="178" y="245">T3</text>
-                            <text x="268" y="245">T4</text>
-                            <text x="358" y="245">T5</text>
-                            <text x="448" y="245">T6</text>
-                            <text x="538" y="245">T7</text>
-                            <text x="628" y="245">CN</text>
-                        </g>
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+    let timer;
+    let dateMode = range?.dataset.hasDateFilter === 'true' ? 'custom' : 'all';
+    const allDatesLabel = 'Tất cả ngày';
+    const customDatesLabel = 'Chọn khoảng ngày';
+
+    const clearSelection = () => {
+        if (!exportButton) return;
+        exportButton.classList.add('d-none');
+        exportButton.setAttribute('href', '#');
+        exportButton.setAttribute('aria-disabled', 'true');
+    };
+
+    const selectInvoice = (radio) => {
+        if (!radio || !exportButton) return;
+        const baseUrl = exportButton.dataset.receiptBaseUrl || '/Payments/ReceiptPdf';
+        const params = new URLSearchParams({
+            id: radio.dataset.invoiceId || radio.value || ''
+        });
+        if (radio.dataset.sourceCollection) {
+            params.set('sourceCollection', radio.dataset.sourceCollection);
+        }
+        exportButton.href = `${baseUrl}?${params.toString()}`;
+        exportButton.classList.remove('d-none');
+        exportButton.removeAttribute('aria-disabled');
+        results.querySelectorAll('[data-payment-row]').forEach(row => row.classList.remove('is-selected'));
+        radio.closest('[data-payment-row]')?.classList.add('is-selected');
+    };
+
+    const setError = (message) => {
+        if (!error) return;
+        error.textContent = message || '';
+        error.classList.toggle('is-visible', Boolean(message));
+        [start, end].forEach(input => input?.classList.toggle('is-invalid', Boolean(message)));
+        form.querySelector('[name="search"]')?.classList.toggle('is-invalid', Boolean(message && message.includes('100')));
+    };
+
+    const updateRangeLabel = () => {
+        if (!label || !start || !end) return;
+        customFields.forEach(field => field.classList.toggle('d-none', dateMode !== 'custom'));
+
+        if (dateMode !== 'custom') {
+            label.textContent = allDatesLabel;
+            return;
+        }
+
+        if (start.value && end.value) label.textContent = `${start.value} - ${end.value}`;
+        else if (start.value) label.textContent = `Từ ${start.value}`;
+        else if (end.value) label.textContent = `Đến ${end.value}`;
+        else label.textContent = customDatesLabel;
+    };
+
+    const validateFilters = () => {
+        const search = form.querySelector('[name="search"]')?.value?.trim() || '';
+        if (search.length > 100) return 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.';
+        if (dateMode === 'custom' && start?.value && end?.value && end.value < start.value) return 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+        return '';
+    };
+
+    const getBasePath = () => {
+        const action = form.getAttribute('action');
+        return action && action.trim() ? action : window.location.pathname;
+    };
+
+    const buildUrl = () => {
+        const params = new URLSearchParams(new FormData(form));
+        if (dateMode !== 'custom') {
+            params.delete('fromDate');
+            params.delete('toDate');
+        }
+        for (const [key, value] of [...params.entries()]) {
+            if (!value) params.delete(key);
+        }
+        const query = params.toString();
+        const basePath = getBasePath();
+        return query ? `${basePath}?${query}` : basePath;
+    };
+
+    const fetchResults = async () => {
+        const validationMessage = validateFilters();
+        setError(validationMessage);
+        if (validationMessage) return;
+
+        const url = buildUrl();
+        results.classList.add('is-loading');
+        try {
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nextResults = doc.getElementById('paymentResults');
+            if (nextResults) {
+                results.innerHTML = nextResults.innerHTML;
+                clearSelection();
+                window.history.replaceState(null, '', url);
+            }
+        } finally {
+            results.classList.remove('is-loading');
+        }
+    };
+
+    const scheduleFetch = (delay = 250) => {
+        clearTimeout(timer);
+        timer = setTimeout(fetchResults, delay);
+    };
+
+    form.querySelector('[name="search"]')?.addEventListener('input', () => scheduleFetch(350));
+    form.querySelectorAll('select').forEach(select => select.addEventListener('change', () => scheduleFetch(0)));
+    [start, end].forEach(input => input?.addEventListener('change', () => {
+        dateMode = 'custom';
+        updateRangeLabel();
+        scheduleFetch(0);
+    }));
+
+    toggle?.addEventListener('click', () => range?.classList.toggle('is-open'));
+    allDates?.addEventListener('click', () => {
+        dateMode = 'all';
+        if (start) start.value = '';
+        if (end) end.value = '';
+        setError('');
+        updateRangeLabel();
+        range?.classList.remove('is-open');
+        scheduleFetch(0);
+    });
+    customDates?.addEventListener('click', () => {
+        dateMode = 'custom';
+        updateRangeLabel();
+        start?.focus();
+    });
+    document.addEventListener('click', event => {
+        if (range && !range.contains(event.target)) range.classList.remove('is-open');
+    });
+
+    results.addEventListener('click', event => {
+        const row = event.target.closest('[data-payment-row]');
+        if (row && !event.target.closest('a, button')) {
+            const radio = row.querySelector('input[name="selectedInvoice"]');
+            if (radio) {
+                radio.checked = true;
+                selectInvoice(radio);
+            }
+            return;
+        }
+
+        if (!event.target.closest('[data-clear-payment-filters]')) return;
+        form.reset();
+        dateMode = 'all';
+        if (start) start.value = '';
+        if (end) end.value = '';
+        updateRangeLabel();
+        setError('');
+        clearSelection();
+        scheduleFetch(0);
+    });
+
+    results.addEventListener('change', event => {
+        if (event.target.matches('input[name="selectedInvoice"]')) {
+            selectInvoice(event.target);
+        }
+    });
+
+    updateRangeLabel();
+    clearSelection();
+})();
+    </script>
+}
 
 @functions {
+    private static string DateRangeLabel(DateOnly? fromDate, DateOnly? toDate)
+    {
+        if (fromDate.HasValue && toDate.HasValue) return $"{fromDate:yyyy-MM-dd} - {toDate:yyyy-MM-dd}";
+        if (fromDate.HasValue) return $"Từ {fromDate:yyyy-MM-dd}";
+        if (toDate.HasValue) return $"Đến {toDate:yyyy-MM-dd}";
+        return "Tất cả ngày";
+    }
+
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
     private static string Initials(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "";
+        if (string.IsNullOrWhiteSpace(name)) return "BN";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return "";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
-        var first = parts[0].Substring(0, 1).ToUpperInvariant();
-        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
-        return first + last;
+        if (parts.Length == 1) return parts[0][..1].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
     private static string Vnd(decimal amount)
@@ -249,7 +356,7 @@
 
     private static string MethodText(Web_Admin_Booking_App.Models.PaymentMethod method) => method switch
     {
-        Web_Admin_Booking_App.Models.PaymentMethod.CreditCard => "Thẻ tín dụng",
+        Web_Admin_Booking_App.Models.PaymentMethod.CreditCard => "Thẻ",
         Web_Admin_Booking_App.Models.PaymentMethod.AtmCard => "Thẻ ATM",
         Web_Admin_Booking_App.Models.PaymentMethod.Cash => "Tiền mặt",
         Web_Admin_Booking_App.Models.PaymentMethod.BankTransfer => "Chuyển khoản",
@@ -260,8 +367,8 @@
     private static string StatusText(Web_Admin_Booking_App.Models.TransactionStatus status) => status switch
     {
         Web_Admin_Booking_App.Models.TransactionStatus.Paid => "Đã thanh toán",
-        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "Chờ thanh toán",
-        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "Đã hoàn tiền",
+        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "Chờ xử lý",
+        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "Thất bại",
         _ => "-"
     };
 
@@ -272,22 +379,4 @@
         Web_Admin_Booking_App.Models.TransactionStatus.Failed => "admin-pill--failed",
         _ => "admin-pill--paused"
     };
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconFilter() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4 6h16M7 12h10M10 18h4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconGrid() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z\" fill=\"currentColor\"/></svg>");
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconExternal() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M14 5h5v5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M10 14 19 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M19 14v5H5V5h5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconCard() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"3\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M4 10h16\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M8 15h4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>");
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconCheckCircle() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.2 12.6 7.4 10.8\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"m9.2 12.6 7.4-7.4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>");
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent IconClock() => new Microsoft.AspNetCore.Html.HtmlString(
-        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M12 7v6l4 2\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>");
 }

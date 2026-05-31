@@ -40,6 +40,21 @@ public class AppointmentListItemViewModel
     public AppointmentStatus Status { get; set; }
 }
 
+public class AppointmentIndexViewModel
+{
+    public string? Search { get; set; }
+    public string? StatusFilter { get; set; }
+    public DateOnly? FromDate { get; set; }
+    public DateOnly? ToDate { get; set; }
+    public string? SelectedId { get; set; }
+    public string? FilterError { get; set; }
+    public int TotalCount { get; set; }
+    public int TodayCount { get; set; }
+    public int PendingCount { get; set; }
+    public int ActiveCount { get; set; }
+    public IReadOnlyList<AppointmentListItemViewModel> Items { get; set; } = Array.Empty<AppointmentListItemViewModel>();
+}
+
 public class SelectOption
 {
     public string Value { get; set; } = string.Empty;
@@ -53,15 +68,17 @@ public class AppointmentCreateViewModel
     public string PatientName { get; set; } = string.Empty;
 
     [Display(Name = "Số điện thoại")]
+    [Required]
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "So dien thoai phai gom 10 so va bat dau bang 0.")]
     public string? PatientPhone { get; set; }
 
     [Required]
     [Display(Name = "Bác sĩ")]
-    public string DoctorName { get; set; } = string.Empty;
+    public string DoctorId { get; set; } = string.Empty;
 
     [Required]
     [Display(Name = "Chuyên khoa")]
-    public string SpecialtyName { get; set; } = string.Empty;
+    public string SpecialtyId { get; set; } = string.Empty;
 
     [Required]
     [Display(Name = "Ngày khám")]

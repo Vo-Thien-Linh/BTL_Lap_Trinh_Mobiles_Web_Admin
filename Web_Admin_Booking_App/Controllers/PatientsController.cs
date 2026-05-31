@@ -18,12 +18,16 @@ public sealed class PatientsController : Controller
         string? search,
         string? genderFilter,
         string? statusFilter,
+        string? insuranceFilter,
         int page = 1,
         CancellationToken cancellationToken = default)
     {
         var allPatients = await LoadPatientsAsync(cancellationToken);
+        var filterError = ValidateFilters(search, genderFilter, statusFilter, insuranceFilter);
 
-        var filtered = ApplyPatientFilters(allPatients, search, genderFilter, statusFilter).ToList();
+        var filtered = filterError == null
+            ? ApplyPatientFilters(allPatients, search, genderFilter, statusFilter, insuranceFilter).ToList()
+            : new List<PatientListItemViewModel>();
         var pageSize = 10;
         var safePage = Math.Max(1, page);
         var totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)pageSize));
@@ -34,11 +38,14 @@ public sealed class PatientsController : Controller
             Search = search,
             GenderFilter = genderFilter,
             StatusFilter = statusFilter,
+            InsuranceFilter = insuranceFilter,
+            FilterError = filterError,
             Page = safePage,
             PageSize = pageSize,
             TotalCount = filtered.Count,
-            ActiveCount = filtered.Count(x => x.Status == PatientStatus.Active),
-            MissingInsuranceCount = filtered.Count(x => string.IsNullOrWhiteSpace(x.HealthInsuranceNumber)),
+            ActiveCount = allPatients.Count(x => x.Status == PatientStatus.Active),
+            MissingInsuranceCount = allPatients.Count(x => string.IsNullOrWhiteSpace(x.HealthInsuranceNumber) || x.HealthInsuranceStatus == "none"),
+            PendingInsuranceCount = allPatients.Count(x => string.Equals(x.HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase)),
             Items = filtered
                 .Skip((safePage - 1) * pageSize)
                 .Take(pageSize)
@@ -63,6 +70,20 @@ public sealed class PatientsController : Controller
 
         patient.RecentAppointments = await LoadRecentAppointmentsAsync(id, cancellationToken);
         return View(patient);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateInsuranceStatus(string id, string status, string? rejectReason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+        status = status?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (status is not ("approved" or "rejected")) return BadRequest();
+        var updated = await UpdateInsuranceStatusAsync(id, status, rejectReason, cancellationToken);
+        if (!updated) return NotFound();
+
+        TempData["SuccessMessage"] = status == "approved" ? "Đã xác nhận BHYT." : "Đã từ chối BHYT.";
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     private bool IsAjaxRequest()
@@ -112,20 +133,23 @@ public sealed class PatientsController : Controller
             return;
         }
 
-        current.FullName = Prefer(current.FullName, incoming.FullName, "Chưa có tên");
-        current.Phone = Prefer(current.Phone, incoming.Phone, "Chưa có số điện thoại");
-        current.Email = Prefer(current.Email, incoming.Email);
+        current.FullName = PreferIncoming(current.FullName, incoming.FullName, "Chưa có tên");
+        current.Phone = PreferIncoming(current.Phone, incoming.Phone, "Chưa có số điện thoại");
+        current.Email = PreferIncoming(current.Email, incoming.Email);
+        current.Cccd = PreferIncoming(current.Cccd, incoming.Cccd);
         current.Gender = current.Gender == Gender.Unknown ? incoming.Gender : current.Gender;
         current.Dob ??= incoming.Dob;
-        current.HealthInsuranceNumber = Prefer(current.HealthInsuranceNumber, incoming.HealthInsuranceNumber);
-        current.HealthInsuranceStatus = Prefer(current.HealthInsuranceStatus, incoming.HealthInsuranceStatus);
+        current.HealthInsuranceNumber = PreferIncoming(current.HealthInsuranceNumber, incoming.HealthInsuranceNumber);
+        current.HealthInsuranceStatus = PreferIncoming(current.HealthInsuranceStatus, incoming.HealthInsuranceStatus);
+        current.HealthInsuranceRejectReason = PreferIncoming(current.HealthInsuranceRejectReason, incoming.HealthInsuranceRejectReason);
+        current.CreatedAt ??= incoming.CreatedAt;
         current.Status = current.Status == PatientStatus.Active ? current.Status : incoming.Status;
     }
 
-    private static string Prefer(string? first, string? second, string fallback = "")
+    private static string PreferIncoming(string? current, string? incoming, string fallback = "")
     {
-        if (!string.IsNullOrWhiteSpace(first) && first != fallback) return first;
-        if (!string.IsNullOrWhiteSpace(second)) return second;
+        if (!string.IsNullOrWhiteSpace(incoming) && incoming != fallback) return incoming;
+        if (!string.IsNullOrWhiteSpace(current) && current != fallback) return current;
         return fallback;
     }
 
@@ -140,19 +164,17 @@ public sealed class PatientsController : Controller
             Gender = ParseGender(GetString(doc, "gender", "Gender", "sex")),
             Dob = GetDateOnly(doc, "dateOfBirth", "dob", "birthDate", "birthday"),
             Status = ParsePatientStatus(GetString(doc, "status", "Status")),
-            HealthInsuranceNumber = GetString(doc, "healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT") ?? string.Empty,
-            HealthInsuranceStatus = GetString(doc, "healthInsuranceStatus", "insuranceStatus") ?? string.Empty
+            HealthInsuranceNumber = GetString(doc, "healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT", "bhytCode", "maBHYT") ?? string.Empty,
+            HealthInsuranceStatus = NormalizeInsuranceStatus(GetString(doc, "status_bhyt", "healthInsuranceStatus", "insuranceStatus", "bhytStatus")),
+            HealthInsuranceRejectReason = GetString(doc, "reject_reason", "healthInsuranceRejectReason", "insuranceRejectReason") ?? string.Empty,
+            Cccd = GetString(doc, "cccd", "citizenId", "identityNumber", "idCard") ?? string.Empty,
+            CreatedAt = GetDateTime(doc, "createdAt", "CreatedAt")
         };
     }
 
     private async Task<PatientDetailsViewModel?> LoadPatientDetailsAsync(string id, CancellationToken cancellationToken)
     {
-        var snapshots = new List<DocumentSnapshot>();
-        foreach (var collectionName in new[] { "users", "Users", "patients", "Patients" })
-        {
-            var snap = await _firestore.Collection(collectionName).Document(id).GetSnapshotAsync(cancellationToken);
-            if (snap.Exists) snapshots.Add(snap);
-        }
+        var snapshots = await LoadPatientSnapshotsAsync(id, cancellationToken);
 
         if (snapshots.Count == 0) return null;
 
@@ -200,8 +222,9 @@ public sealed class PatientsController : Controller
             BloodType = Get("bloodType", "bloodGroup") ?? string.Empty,
             Allergy = Get("allergy", "allergies") ?? string.Empty,
             ChronicDisease = Get("chronicDisease", "chronicDiseases", "medicalHistory") ?? string.Empty,
-            HealthInsuranceNumber = Get("healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT") ?? string.Empty,
-            HealthInsuranceStatus = Get("healthInsuranceStatus", "insuranceStatus") ?? string.Empty,
+            HealthInsuranceNumber = Get("healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT", "bhytCode", "maBHYT") ?? string.Empty,
+            HealthInsuranceStatus = NormalizeInsuranceStatus(Get("status_bhyt", "healthInsuranceStatus", "insuranceStatus", "bhytStatus")),
+            HealthInsuranceRejectReason = Get("reject_reason", "healthInsuranceRejectReason", "insuranceRejectReason") ?? string.Empty,
             Status = ParsePatientStatus(Get("status", "Status")),
             CreatedAt = GetDateTimeValue("createdAt", "CreatedAt"),
             UpdatedAt = GetDateTimeValue("updatedAt", "UpdatedAt", "modifiedAt"),
@@ -243,7 +266,8 @@ public sealed class PatientsController : Controller
         IEnumerable<PatientListItemViewModel> source,
         string? search,
         string? genderFilter,
-        string? statusFilter)
+        string? statusFilter,
+        string? insuranceFilter)
     {
         var query = source;
         if (!string.IsNullOrWhiteSpace(search))
@@ -253,6 +277,7 @@ public sealed class PatientsController : Controller
                 x.FullName.ToLowerInvariant().Contains(key) ||
                 x.Phone.ToLowerInvariant().Contains(key) ||
                 x.Email.ToLowerInvariant().Contains(key) ||
+                x.Cccd.ToLowerInvariant().Contains(key) ||
                 x.Id.ToLowerInvariant().Contains(key) ||
                 x.HealthInsuranceNumber.ToLowerInvariant().Contains(key));
         }
@@ -267,7 +292,114 @@ public sealed class PatientsController : Controller
             query = query.Where(x => x.Status == status);
         }
 
+        if (!string.IsNullOrWhiteSpace(insuranceFilter))
+        {
+            if (insuranceFilter.Equals("missing", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(x => string.IsNullOrWhiteSpace(x.HealthInsuranceNumber));
+            }
+            else
+            {
+                query = query.Where(x => string.Equals(x.HealthInsuranceStatus, insuranceFilter, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
         return query;
+    }
+
+    private static string? ValidateFilters(string? search, string? genderFilter, string? statusFilter, string? insuranceFilter)
+    {
+        if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length > 100)
+        {
+            return "Từ khóa tìm kiếm không được vượt quá 100 ký tự.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(genderFilter) && !Enum.TryParse<Gender>(genderFilter, true, out _))
+        {
+            return "Bộ lọc giới tính không hợp lệ.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && !Enum.TryParse<PatientStatus>(statusFilter, true, out _))
+        {
+            return "Bộ lọc trạng thái tài khoản không hợp lệ.";
+        }
+
+        var allowedInsurance = new[] { "pending", "approved", "rejected", "missing" };
+        if (!string.IsNullOrWhiteSpace(insuranceFilter) &&
+            !allowedInsurance.Contains(insuranceFilter, StringComparer.OrdinalIgnoreCase))
+        {
+            return "Bộ lọc trạng thái BHYT không hợp lệ.";
+        }
+
+        return null;
+    }
+
+    private async Task<bool> UpdateInsuranceStatusAsync(string id, string status, string? rejectReason, CancellationToken cancellationToken)
+    {
+        var snapshots = await LoadPatientSnapshotsAsync(id, cancellationToken);
+        if (snapshots.Count == 0) return false;
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["status_bhyt"] = status,
+            ["healthInsuranceStatus"] = status,
+            ["insuranceStatus"] = status,
+            ["reject_reason"] = status == "rejected" ? rejectReason?.Trim() ?? string.Empty : null,
+            ["healthInsuranceRejectReason"] = status == "rejected" ? rejectReason?.Trim() ?? string.Empty : null,
+            ["updatedAt"] = Timestamp.GetCurrentTimestamp()
+        };
+
+        foreach (var snap in snapshots)
+        {
+            await snap.Reference.SetAsync(payload, SetOptions.MergeAll, cancellationToken);
+        }
+
+        return true;
+    }
+
+    private async Task<List<DocumentSnapshot>> LoadPatientSnapshotsAsync(string id, CancellationToken cancellationToken)
+    {
+        var snapshots = new List<DocumentSnapshot>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        async Task AddDocumentAsync(DocumentReference docRef)
+        {
+            var snap = await docRef.GetSnapshotAsync(cancellationToken);
+            if (snap.Exists && seenPaths.Add(snap.Reference.Path)) snapshots.Add(snap);
+        }
+
+        foreach (var collectionName in new[] { "patients", "Patients", "users", "Users" })
+        {
+            await AddDocumentAsync(_firestore.Collection(collectionName).Document(id));
+        }
+
+        foreach (var collectionName in new[] { "patients", "Patients", "users", "Users" })
+        {
+            foreach (var field in new[] { "uid", "userId", "patientId", "UserId", "PatientId" })
+            {
+                var matches = await _firestore.Collection(collectionName).WhereEqualTo(field, id).Limit(5).GetSnapshotAsync(cancellationToken);
+                foreach (var doc in matches.Documents)
+                {
+                    if (seenPaths.Add(doc.Reference.Path)) snapshots.Add(doc);
+                }
+            }
+        }
+
+        return snapshots
+            .OrderByDescending(x => x.Reference.Parent.Id.Contains("patient", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static string NormalizeInsuranceStatus(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "approved" or "da_duyet" or "đã duyệt" => "approved",
+            "pending" or "cho_duyet" or "chờ duyệt" => "pending",
+            "rejected" or "tu_choi" or "từ chối" => "rejected",
+            "none" or "missing" => "none",
+            _ => string.Empty
+        };
     }
 
     private static string? GetString(DocumentSnapshot doc, params string[] fields)

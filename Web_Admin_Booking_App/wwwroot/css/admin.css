@@ -219,6 +219,24 @@
     border-top: 1px solid var(--bs-border-color);
 }
 
+.payment-select-col {
+    width: 56px;
+    text-align: center;
+}
+
+.payment-select-row {
+    cursor: pointer;
+}
+
+.payment-select-row.is-selected {
+    background: rgba(var(--bs-primary-rgb), 0.07);
+}
+
+.appointment-row--selected {
+    background: #f1f5f9;
+    box-shadow: inset 4px 0 0 var(--bs-primary);
+}
+
 .admin-kpi-icon {
     width: 40px;
     height: 40px;
@@ -769,7 +787,7 @@ body {
 
 .admin-stat-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 16px;
 }
 
@@ -937,6 +955,122 @@ body {
     text-align: center;
     color: #94a3b8;
     padding: 38px !important;
+}
+
+.empty-state--rich {
+    display: grid;
+    place-items: center;
+    gap: 12px;
+    min-height: 240px;
+    padding: 42px 18px !important;
+}
+
+.empty-state__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.empty-state__title {
+    color: #475569;
+    font-weight: 800;
+    font-size: 1rem;
+}
+
+.medical-filter {
+    display: grid;
+    grid-template-columns: minmax(280px, 1.25fr) minmax(190px, .75fr) minmax(260px, 1fr);
+    gap: 12px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,.07);
+    border-radius: 18px;
+    padding: 12px;
+    box-shadow: 0 14px 35px rgba(15,23,42,.05);
+}
+
+.filter-validation-message {
+    display: none;
+    grid-column: 1 / -1;
+    color: #dc3545;
+    font-size: .86rem;
+    font-weight: 700;
+    padding: 2px 4px 0;
+}
+
+.filter-validation-message.is-visible {
+    display: block;
+}
+
+.medical-filter .form-control,
+.medical-filter .form-select {
+    min-height: 44px;
+    border-radius: 14px;
+    border-color: #dce4f2;
+}
+
+.payment-filter {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.3fr) minmax(140px, .7fr) minmax(160px, .8fr) minmax(170px, .85fr) minmax(240px, 1fr);
+    gap: 12px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,.07);
+    border-radius: 18px;
+    padding: 12px;
+    box-shadow: 0 14px 35px rgba(15,23,42,.05);
+}
+
+.payment-filter .form-control,
+.payment-filter .form-select {
+    min-height: 44px;
+    border-radius: 14px;
+    border-color: #dce4f2;
+}
+
+.medical-date-range {
+    position: relative;
+}
+
+.medical-date-range__button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    color: #64748b;
+    background: #fff;
+}
+
+.medical-date-range__popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1040;
+    width: min(420px, 90vw);
+    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,.10);
+    border-radius: 16px;
+    box-shadow: 0 20px 55px rgba(15,23,42,.14);
+}
+
+.medical-date-range.is-open .medical-date-range__popover {
+    display: grid;
+}
+
+.payment-date-filter__presets {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-bottom: 4px;
 }
 
 .table-footer {
@@ -1113,6 +1247,21 @@ body {
 
     .filter-toolbar {
         grid-template-columns: 1fr;
+    }
+
+    .medical-filter {
+        grid-template-columns: 1fr;
+    }
+
+    .payment-filter {
+        grid-template-columns: 1fr;
+    }
+
+    .medical-date-range__popover {
+        position: static;
+        width: 100%;
+        margin-top: 8px;
+        box-shadow: none;
     }
 
     .admin-stat-grid {

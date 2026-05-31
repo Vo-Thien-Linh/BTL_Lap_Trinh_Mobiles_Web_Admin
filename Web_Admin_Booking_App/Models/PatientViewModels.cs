@@ -17,16 +17,27 @@ public enum PatientStatus
     Blocked = 3
 }
 
+public enum HealthInsuranceStatus
+{
+    None = 0,
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
+}
+
 public sealed class PatientIndexViewModel
 {
     public string? Search { get; set; }
     public string? GenderFilter { get; set; }
     public string? StatusFilter { get; set; }
+    public string? InsuranceFilter { get; set; }
+    public string? FilterError { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
     public int TotalCount { get; set; }
     public int ActiveCount { get; set; }
     public int MissingInsuranceCount { get; set; }
+    public int PendingInsuranceCount { get; set; }
     public int HasInsuranceCount => Math.Max(0, TotalCount - MissingInsuranceCount);
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)Math.Max(1, PageSize)));
     public List<PatientListItemViewModel> Items { get; set; } = new();
@@ -43,6 +54,9 @@ public sealed class PatientListItemViewModel
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public string HealthInsuranceNumber { get; set; } = string.Empty;
     public string HealthInsuranceStatus { get; set; } = string.Empty;
+    public string HealthInsuranceRejectReason { get; set; } = string.Empty;
+    public string Cccd { get; set; } = string.Empty;
+    public DateTime? CreatedAt { get; set; }
 
     public string AvatarText
     {
@@ -73,6 +87,7 @@ public sealed class PatientDetailsViewModel
     public string ChronicDisease { get; set; } = string.Empty;
     public string HealthInsuranceNumber { get; set; } = string.Empty;
     public string HealthInsuranceStatus { get; set; } = string.Empty;
+    public string HealthInsuranceRejectReason { get; set; } = string.Empty;
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

@@ -30,38 +30,39 @@
             </div>
 
             <div class="col-md-6">
-                <label asp-for="DoctorName" class="form-label"></label>
-                <select asp-for="DoctorName" class="form-select">
+                <label asp-for="DoctorId" class="form-label">Bác sĩ</label>
+                <select asp-for="DoctorId" class="form-select" id="doctorSelect">
                     <option value="">-- Chọn bác sĩ --</option>
                     @foreach (var d in Model.Doctors)
                     {
                         <option value="@d.Value">@d.Text</option>
                     }
                 </select>
-                <span asp-validation-for="DoctorName" class="text-danger"></span>
+                <span asp-validation-for="DoctorId" class="text-danger"></span>
             </div>
 
             <div class="col-md-6">
-                <label asp-for="SpecialtyName" class="form-label"></label>
-                <select asp-for="SpecialtyName" class="form-select">
+                <label asp-for="SpecialtyId" class="form-label">Chuyên khoa</label>
+                <select asp-for="SpecialtyId" class="form-select" id="specialtySelect">
                     <option value="">-- Chọn chuyên khoa --</option>
                     @foreach (var s in Model.Specialties)
                     {
                         <option value="@s.Value">@s.Text</option>
                     }
                 </select>
-                <span asp-validation-for="SpecialtyName" class="text-danger"></span>
+                <span asp-validation-for="SpecialtyId" class="text-danger"></span>
             </div>
 
             <div class="col-md-3">
                 <label asp-for="Date" class="form-label"></label>
-                <input asp-for="Date" class="form-control" type="date" />
+                <input asp-for="Date" class="form-control" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
                 <span asp-validation-for="Date" class="text-danger"></span>
             </div>
 
             <div class="col-md-3">
                 <label asp-for="Time" class="form-label"></label>
                 <input asp-for="Time" class="form-control" type="time" />
+                <div class="form-text" id="timePreview"></div>
                 <span asp-validation-for="Time" class="text-danger"></span>
             </div>
 
@@ -94,4 +95,46 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+(() => {
+    const specialty = document.getElementById('specialtySelect');
+    const doctor = document.getElementById('doctorSelect');
+    const time = document.getElementById('Time');
+    const preview = document.getElementById('timePreview');
+    const form = document.querySelector('form');
+    const submit = form?.querySelector('button[type="submit"]');
+
+    const updateTimePreview = () => {
+        if (!time?.value || !preview) return;
+        const [h, m] = time.value.split(':').map(Number);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const hour = h % 12 || 12;
+        preview.textContent = `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+    };
+
+    const refreshSubmitState = () => {
+        if (!submit || !form) return;
+        submit.disabled = !form.checkValidity();
+    };
+
+    specialty?.addEventListener('change', async () => {
+        doctor.innerHTML = '<option value="">-- Chọn bác sĩ --</option>';
+        if (!specialty.value) return;
+        const response = await fetch(`/Appointments/DoctorsBySpecialty?specialtyId=${encodeURIComponent(specialty.value)}`);
+        const data = await response.json();
+        for (const item of data) {
+            doctor.add(new Option(item.text, item.value));
+        }
+        refreshSubmitState();
+    });
+
+    form?.querySelectorAll('input, select, textarea').forEach(el => {
+        el.addEventListener('input', refreshSubmitState);
+        el.addEventListener('change', refreshSubmitState);
+    });
+    time?.addEventListener('input', updateTimePreview);
+    updateTimePreview();
+    refreshSubmitState();
+})();
+    </script>
 }

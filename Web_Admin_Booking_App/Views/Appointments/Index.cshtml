@@ -1,16 +1,7 @@
-@model IReadOnlyList<Web_Admin_Booking_App.Models.AppointmentListItemViewModel>
+@model Web_Admin_Booking_App.Models.AppointmentIndexViewModel
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Lịch hẹn";
-
-    var today = DateTime.Today;
-    var total = Model.Count;
-    var todayCount = Model.Count(x => x.ScheduledAt.Date == today);
-    var pendingCount = Model.Count(x => x.Status == Web_Admin_Booking_App.Models.AppointmentStatus.Pending);
-    var activeCount = Model.Count(x =>
-        x.Status == Web_Admin_Booking_App.Models.AppointmentStatus.Confirmed ||
-        x.Status == Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming ||
-        x.Status == Web_Admin_Booking_App.Models.AppointmentStatus.InProgress);
 }
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
@@ -26,7 +17,7 @@
         <div class="card panel-card h-100">
             <div class="card-body">
                 <div class="text-secondary small">Tổng lịch hẹn</div>
-                <div class="fs-4 fw-bold">@total</div>
+                <div class="fs-4 fw-bold">@Model.TotalCount</div>
             </div>
         </div>
     </div>
@@ -34,7 +25,7 @@
         <div class="card panel-card h-100">
             <div class="card-body">
                 <div class="text-secondary small">Hôm nay</div>
-                <div class="fs-4 fw-bold">@todayCount</div>
+                <div class="fs-4 fw-bold">@Model.TodayCount</div>
             </div>
         </div>
     </div>
@@ -42,7 +33,7 @@
         <div class="card panel-card h-100">
             <div class="card-body">
                 <div class="text-secondary small">Chờ xác nhận</div>
-                <div class="fs-4 fw-bold">@pendingCount</div>
+                <div class="fs-4 fw-bold">@Model.PendingCount</div>
             </div>
         </div>
     </div>
@@ -50,13 +41,13 @@
         <div class="card panel-card h-100">
             <div class="card-body">
                 <div class="text-secondary small">Đang xử lý</div>
-                <div class="fs-4 fw-bold">@activeCount</div>
+                <div class="fs-4 fw-bold">@Model.ActiveCount</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card panel-card">
+<div id="appointmentResults" class="card panel-card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table align-middle mb-0 admin-table">
@@ -71,7 +62,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @if (Model.Count == 0)
+                @if (Model.Items.Count == 0)
                 {
                     <tr>
                         <td colspan="6" class="text-center text-secondary py-5">Chưa có lịch hẹn nào.</td>
@@ -79,9 +70,10 @@
                 }
                 else
                 {
-                    foreach (var a in Model)
+                    foreach (var a in Model.Items)
                     {
-                        <tr>
+                        var isSelected = IsSelected(a, Model.SelectedId);
+                        <tr class="@(isSelected ? "appointment-row--selected" : "")" id="appointment-@a.DocumentId">
                             <td>
                                 <div class="person-cell">
                                     <div class="avatar">@Initials(a.PatientName)</div>
@@ -145,21 +137,28 @@
 @functions {
     private static string Initials(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "";
+        if (string.IsNullOrWhiteSpace(name)) return "BN";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return "";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
-        return parts[0].Substring(0, 1).ToUpperInvariant() + parts[^1].Substring(0, 1).ToUpperInvariant();
+        if (parts.Length == 1) return parts[0][..1].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
     private static string ValueOrDash(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "-" : value;
 
+    private static bool IsSelected(Web_Admin_Booking_App.Models.AppointmentListItemViewModel item, string? selectedId)
+    {
+        return !string.IsNullOrWhiteSpace(selectedId) &&
+            (string.Equals(item.Id, selectedId, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(item.DocumentId, selectedId, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(item.AppointmentCode, selectedId, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string StatusText(Web_Admin_Booking_App.Models.AppointmentStatus status) => status switch
     {
         Web_Admin_Booking_App.Models.AppointmentStatus.Pending => "Chờ xác nhận",
         Web_Admin_Booking_App.Models.AppointmentStatus.Confirmed => "Đã xác nhận",
-        Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming => "Sắp đến",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming => "Sắp tới",
         Web_Admin_Booking_App.Models.AppointmentStatus.InProgress => "Đang khám",
         Web_Admin_Booking_App.Models.AppointmentStatus.Completed => "Đã khám",
         Web_Admin_Booking_App.Models.AppointmentStatus.Cancelled => "Đã hủy",
