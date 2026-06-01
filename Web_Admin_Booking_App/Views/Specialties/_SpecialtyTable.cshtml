@@ -20,8 +20,8 @@
                 <tr>
                     <th>Tên chuyên khoa</th>
                     <th>Mã khoa</th>
-                    <th>Trưởng khoa</th>
-                    <th class="text-center">Số bác sĩ</th>
+                    <th>Liên hệ</th>
+                    <th class="text-center">Phòng</th>
                     <th class="text-center">Trạng thái</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
@@ -46,8 +46,11 @@
                         </div>
                     </td>
                     <td><span class="code-badge">@item.Code</span></td>
-                    <td>@(string.IsNullOrWhiteSpace(item.HeadDoctor) ? "Chưa phân công" : item.HeadDoctor)</td>
-                    <td class="text-center fw-bold">@item.DoctorCount</td>
+                    <td>
+                        <div>@(string.IsNullOrWhiteSpace(item.Phone) ? "Chưa cập nhật" : item.Phone)</div>
+                        <div class="subtle-text">@(string.IsNullOrWhiteSpace(item.Description) ? "Chưa có mô tả" : item.Description)</div>
+                    </td>
+                    <td class="text-center fw-bold">@item.RoomCount</td>
                     <td class="text-center"><span class="@StatusClass(item.Status)">@StatusText(item.Status)</span></td>
                     <td class="text-end">
                         <div class="action-group">

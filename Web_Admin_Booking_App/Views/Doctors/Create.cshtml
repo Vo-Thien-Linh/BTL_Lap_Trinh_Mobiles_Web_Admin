@@ -7,19 +7,20 @@
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
         <div class="fw-bold fs-5">Thêm bác sĩ</div>
-        <div class="text-secondary">Tạo tài khoản và hồ sơ chuyên môn cho bác sĩ</div>
+        <div class="text-secondary">Tạo tài khoản đăng nhập và hồ sơ chuyên môn cho bác sĩ</div>
     </div>
     <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
 </div>
 
 <div class="card panel-card">
     <div class="card-body">
-        <form asp-action="Create" method="post" class="row g-3">
+        <form asp-action="Create" method="post" enctype="multipart/form-data" class="row g-3">
             @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="col-12">
                 <div class="fw-bold">Thông tin tài khoản</div>
-                <div class="text-secondary small">Dữ liệu tương ứng collection users, role mặc định là doctor.</div>
+                <div class="text-secondary small">Email và mật khẩu sẽ được cấp cho bác sĩ đăng nhập ứng dụng.</div>
             </div>
 
             <div class="col-md-6">
@@ -34,19 +35,31 @@
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
 
-            <div class="col-md-6">
-                <label asp-for="Phone" class="form-label"></label>
-                <input asp-for="Phone" class="form-control" placeholder="VD: 0901 234 567" />
-                <span asp-validation-for="Phone" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="AvatarUrl" class="form-label"></label>
-                <input asp-for="AvatarUrl" class="form-control" placeholder="https://..." />
-                <span asp-validation-for="AvatarUrl" class="text-danger"></span>
+            <div class="col-md-4">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
             </div>
 
             <div class="col-md-4">
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" inputmode="numeric" maxlength="10" placeholder="VD: 0901234567" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Cccd" class="form-label"></label>
+                <input asp-for="Cccd" class="form-control" inputmode="numeric" maxlength="12" placeholder="12 chữ số" />
+                <span asp-validation-for="Cccd" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="AvatarFile" class="form-label"></label>
+                <input asp-for="AvatarFile" class="form-control" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                <span asp-validation-for="AvatarFile" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3">
                 <label asp-for="Gender" class="form-label"></label>
                 <select asp-for="Gender" class="form-select">
                     <option value="">Chưa chọn</option>
@@ -56,13 +69,13 @@
                 <span asp-validation-for="Gender" class="text-danger"></span>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label asp-for="DateOfBirth" class="form-label"></label>
                 <input asp-for="DateOfBirth" class="form-control" />
                 <span asp-validation-for="DateOfBirth" class="text-danger"></span>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label asp-for="UserStatus" class="form-label"></label>
                 <select asp-for="UserStatus" class="form-select">
                     <option value="pending">Chờ kích hoạt</option>
@@ -70,12 +83,6 @@
                     <option value="blocked">Đã khóa</option>
                 </select>
                 <span asp-validation-for="UserStatus" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="UserId" class="form-label"></label>
-                <input asp-for="UserId" class="form-control" placeholder="UID Firebase Auth nếu đã có" />
-                <span asp-validation-for="UserId" class="text-danger"></span>
             </div>
 
             <div class="col-md-6 d-flex align-items-end">
@@ -88,12 +95,18 @@
             <div class="col-12 pt-2">
                 <hr />
                 <div class="fw-bold">Hồ sơ bác sĩ</div>
-                <div class="text-secondary small">Dữ liệu tương ứng collection Doctors.</div>
+                <div class="text-secondary small">Mã bác sĩ và mã tài khoản sẽ được hệ thống tự tạo.</div>
             </div>
 
             <div class="col-md-6">
                 <label asp-for="DepartmentId" class="form-label"></label>
-                <input asp-for="DepartmentId" class="form-control" placeholder="VD: dept_internal" />
+                <select asp-for="DepartmentId" class="form-select">
+                    <option value="">Chọn khoa</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department.Value">@department.Text</option>
+                    }
+                </select>
                 <span asp-validation-for="DepartmentId" class="text-danger"></span>
             </div>
 
@@ -105,7 +118,7 @@
 
             <div class="col-md-6">
                 <label asp-for="LicenseNumber" class="form-label"></label>
-                <input asp-for="LicenseNumber" class="form-control" placeholder="VD: LIC-0001" />
+                <input asp-for="LicenseNumber" class="form-control" placeholder="VD: CCHN-0001" />
                 <span asp-validation-for="LicenseNumber" class="text-danger"></span>
             </div>
 
@@ -123,7 +136,7 @@
 
             <div class="col-md-4">
                 <label asp-for="ConsultationFee" class="form-label"></label>
-                <input asp-for="ConsultationFee" class="form-control" type="number" min="0" step="1000" />
+                <input asp-for="ConsultationFee" class="form-control js-money-input" type="text" inputmode="numeric" placeholder="VD: 300.000" />
                 <span asp-validation-for="ConsultationFee" class="text-danger"></span>
             </div>
 
@@ -131,11 +144,23 @@
                 <label asp-for="VerificationStatus" class="form-label"></label>
                 <select asp-for="VerificationStatus" class="form-select">
                     <option value="pending">Chờ duyệt</option>
-                    <option value="approved">Đã duyệt</option>
+                    <option value="verified">Đã xác minh</option>
                     <option value="rejected">Từ chối</option>
-                    <option value="draft">Bản nháp</option>
                 </select>
                 <span asp-validation-for="VerificationStatus" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="IsFeatured" class="form-check-input" />
+                    <label asp-for="IsFeatured" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="FeaturedRank" class="form-label"></label>
+                <input asp-for="FeaturedRank" class="form-control" type="number" min="1" max="999" placeholder="VD: 1" />
+                <span asp-validation-for="FeaturedRank" class="text-danger"></span>
             </div>
 
             <div class="col-12">
@@ -161,4 +186,32 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const formatMoney = value => {
+                const digits = (value || "").replace(/\D/g, "");
+                return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            };
+
+            document.querySelectorAll(".js-money-input").forEach(input => {
+                input.value = formatMoney(input.value);
+                input.addEventListener("input", () => {
+                    input.value = formatMoney(input.value);
+                });
+                input.form?.addEventListener("submit", () => {
+                    input.value = (input.value || "").replace(/\D/g, "");
+                });
+            });
+
+            const featuredCheckbox = document.querySelector("#IsFeatured");
+            const featuredRank = document.querySelector("#FeaturedRank");
+            const syncFeaturedRank = () => {
+                if (!featuredCheckbox || !featuredRank) return;
+                featuredRank.disabled = !featuredCheckbox.checked;
+                if (!featuredCheckbox.checked) featuredRank.value = "";
+            };
+            featuredCheckbox?.addEventListener("change", syncFeaturedRank);
+            syncFeaturedRank();
+        })();
+    </script>
 }

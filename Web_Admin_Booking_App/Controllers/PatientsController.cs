@@ -74,7 +74,7 @@ public sealed class PatientsController : Controller
     {
         var result = new Dictionary<string, PatientListItemViewModel>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var collectionName in new[] { "users", "Users" })
+        foreach (var collectionName in new[] { "users" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents)
@@ -87,15 +87,16 @@ public sealed class PatientsController : Controller
             }
         }
 
-        foreach (var collectionName in new[] { "patients", "Patients" })
+        foreach (var collectionName in new[] { "health_insurances" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents)
             {
-                var userId = GetString(doc, "uid", "userId", "patientId", "UserId", "PatientId") ?? doc.Id;
-                var patient = MapPatientListItem(doc);
-                patient.Id = userId;
-                MergePatient(result, userId, patient);
+                var userId = GetString(doc, "userId", "UserId") ?? doc.Id;
+                if (!result.TryGetValue(userId, out var patient)) continue;
+
+                patient.HealthInsuranceNumber = Prefer(patient.HealthInsuranceNumber, GetString(doc, "insuranceNumber"));
+                patient.HealthInsuranceStatus = Prefer(patient.HealthInsuranceStatus, GetString(doc, "status"));
             }
         }
 
@@ -113,6 +114,7 @@ public sealed class PatientsController : Controller
         }
 
         current.FullName = Prefer(current.FullName, incoming.FullName, "Chưa có tên");
+        current.Code = Prefer(current.Code, incoming.Code, current.Id);
         current.Phone = Prefer(current.Phone, incoming.Phone, "Chưa có số điện thoại");
         current.Email = Prefer(current.Email, incoming.Email);
         current.Gender = current.Gender == Gender.Unknown ? incoming.Gender : current.Gender;
@@ -134,6 +136,7 @@ public sealed class PatientsController : Controller
         return new PatientListItemViewModel
         {
             Id = doc.Id,
+            Code = GetString(doc, "userCode", "patientCode", "code") ?? doc.Id,
             FullName = GetString(doc, "fullName", "FullName", "name", "username", "patientName") ?? "Chưa có tên",
             Phone = GetString(doc, "phone", "phoneNumber", "Phone", "mobile", "sdt") ?? "Chưa có số điện thoại",
             Email = GetString(doc, "email", "Email") ?? string.Empty,
@@ -148,13 +151,15 @@ public sealed class PatientsController : Controller
     private async Task<PatientDetailsViewModel?> LoadPatientDetailsAsync(string id, CancellationToken cancellationToken)
     {
         var snapshots = new List<DocumentSnapshot>();
-        foreach (var collectionName in new[] { "users", "Users", "patients", "Patients" })
+        foreach (var collectionName in new[] { "users", "health_insurances" })
         {
             var snap = await _firestore.Collection(collectionName).Document(id).GetSnapshotAsync(cancellationToken);
             if (snap.Exists) snapshots.Add(snap);
         }
 
         if (snapshots.Count == 0) return null;
+        var insuranceSnapshot = snapshots.FirstOrDefault(x =>
+            string.Equals(x.Reference.Parent.Id, "health_insurances", StringComparison.OrdinalIgnoreCase));
 
         string? Get(params string[] fields)
         {
@@ -189,6 +194,7 @@ public sealed class PatientsController : Controller
         return new PatientDetailsViewModel
         {
             Id = id,
+            Code = Get("userCode", "patientCode", "code") ?? id,
             FullName = Get("fullName", "FullName", "name", "username", "patientName") ?? "Chưa có tên",
             Username = Get("username", "Username") ?? string.Empty,
             Phone = Get("phone", "phoneNumber", "Phone", "mobile", "sdt") ?? "Chưa có số điện thoại",
@@ -200,8 +206,8 @@ public sealed class PatientsController : Controller
             BloodType = Get("bloodType", "bloodGroup") ?? string.Empty,
             Allergy = Get("allergy", "allergies") ?? string.Empty,
             ChronicDisease = Get("chronicDisease", "chronicDiseases", "medicalHistory") ?? string.Empty,
-            HealthInsuranceNumber = Get("healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT") ?? string.Empty,
-            HealthInsuranceStatus = Get("healthInsuranceStatus", "insuranceStatus") ?? string.Empty,
+            HealthInsuranceNumber = (insuranceSnapshot is null ? null : GetString(insuranceSnapshot, "insuranceNumber")) ?? Get("healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT") ?? string.Empty,
+            HealthInsuranceStatus = (insuranceSnapshot is null ? null : GetString(insuranceSnapshot, "status")) ?? Get("healthInsuranceStatus", "insuranceStatus") ?? string.Empty,
             Status = ParsePatientStatus(Get("status", "Status")),
             CreatedAt = GetDateTimeValue("createdAt", "CreatedAt"),
             UpdatedAt = GetDateTimeValue("updatedAt", "UpdatedAt", "modifiedAt"),
@@ -213,7 +219,7 @@ public sealed class PatientsController : Controller
     private async Task<List<PatientAppointmentSummaryViewModel>> LoadRecentAppointmentsAsync(string patientId, CancellationToken cancellationToken)
     {
         var result = new List<PatientAppointmentSummaryViewModel>();
-        foreach (var collectionName in new[] { "appointments", "Appointments" })
+        foreach (var collectionName in new[] { "Appointments" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents)

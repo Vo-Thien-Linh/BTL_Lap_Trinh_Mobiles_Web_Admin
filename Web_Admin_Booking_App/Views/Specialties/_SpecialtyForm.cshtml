@@ -6,12 +6,14 @@
 
 <div class="card panel-card form-card">
     <div class="card-body p-4">
-        <form method="post" class="row g-4" id="specialtyUpsertForm">
+        <form method="post" enctype="multipart/form-data" class="row g-4" id="specialtyUpsertForm">
             @Html.AntiForgeryToken()
             @if (isEdit)
             {
                 <input type="hidden" asp-for="Id" />
             }
+            <input type="hidden" asp-for="Code" />
+            <input type="hidden" asp-for="ImageUrl" />
 
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -29,37 +31,18 @@
             </div>
 
             <div class="col-lg-6">
-                <label asp-for="Code" class="form-label"></label>
-                <input asp-for="Code" class="form-control form-control-lg js-specialty-code" placeholder="VD: CARD-001" list="specialtyCodeSuggestions" autocomplete="off" />
-                <datalist id="specialtyCodeSuggestions">
-                    @foreach (var code in Model.ExistingCodes)
-                    {
-                        <option value="@code"></option>
-                    }
-                </datalist>
-                <div class="form-hint js-code-warning d-none">Mã khoa này đã hoặc gần giống mã đang có.</div>
-                <span asp-validation-for="Code" class="text-danger"></span>
+                <label class="form-label">Mã khoa</label>
+                <input class="form-control form-control-lg bg-light text-secondary" value="@(isEdit && !string.IsNullOrWhiteSpace(Model.Code) ? Model.Code : Model.CodePreview)" readonly />
+                <div class="form-hint">Admin không cần nhập mã khoa thủ công.</div>
             </div>
 
             <div class="col-lg-6">
-                <label asp-for="HeadDoctor" class="form-label"></label>
-                <input asp-for="HeadDoctor" class="form-control" placeholder="Chọn hoặc nhập tên trưởng khoa" list="doctorSuggestions" autocomplete="off" />
-                <datalist id="doctorSuggestions">
-                    @foreach (var doctor in Model.DoctorSuggestions)
-                    {
-                        <option value="@doctor"></option>
-                    }
-                </datalist>
-                <span asp-validation-for="HeadDoctor" class="text-danger"></span>
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" placeholder="VD: 0281234567" autocomplete="off" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
             </div>
 
-            <div class="col-lg-3">
-                <label asp-for="DoctorCount" class="form-label"></label>
-                <input asp-for="DoctorCount" class="form-control" type="number" min="0" />
-                <span asp-validation-for="DoctorCount" class="text-danger"></span>
-            </div>
-
-            <div class="col-lg-3">
+            <div class="col-lg-6">
                 <label asp-for="Status" class="form-label"></label>
                 <select asp-for="Status" class="form-select">
                     <option value="Active">Đang hoạt động</option>
@@ -81,19 +64,39 @@
             </div>
 
             <div class="col-lg-6">
-                <label asp-for="Icon" class="form-label"></label>
-                <select asp-for="Icon" class="form-select">
-                    <option value="General">Mặc định</option>
-                    <option value="Heart">Tim mạch</option>
-                    <option value="Brain">Thần kinh</option>
-                    <option value="Baby">Nhi</option>
-                    <option value="Lab">Xét nghiệm</option>
-                    <option value="Skin">Da liễu</option>
-                    <option value="Eye">Mắt</option>
-                    <option value="Bone">Cơ xương khớp</option>
-                    <option value="Tooth">Răng hàm mặt</option>
-                </select>
-                <span asp-validation-for="Icon" class="text-danger"></span>
+                <label asp-for="LogoFile" class="form-label"></label>
+                <input asp-for="LogoFile" class="form-control" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                {
+                    <div class="form-hint">Logo hiện tại: @Model.ImageUrl</div>
+                }
+                <span asp-validation-for="LogoFile" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả ngắn về khoa"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <label asp-for="RoomsText" class="form-label mb-0"></label>
+                    <button class="btn btn-sm btn-outline-primary" type="button" id="addRoomButton">+ Thêm phòng</button>
+                </div>
+                <div id="roomList" class="d-grid gap-2">
+                    @{
+                        var rooms = Model.RoomNumbers.Count > 0 ? Model.RoomNumbers : new List<string> { string.Empty };
+                    }
+                    @for (var i = 0; i < rooms.Count; i++)
+                    {
+                        <div class="input-group room-row">
+                            <input class="form-control" name="RoomNumbers" value="@rooms[i]" placeholder="VD: P.101" />
+                            <button class="btn btn-outline-danger room-remove" type="button">Xóa</button>
+                        </div>
+                    }
+                </div>
+                <div class="form-hint">Mỗi ô là một phòng. Web sẽ lưu theo dạng rooms: roomId, roomNumber, name, isActive.</div>
             </div>
 
             <div class="col-12 d-flex gap-2 pt-2">
@@ -107,7 +110,6 @@
 <script>
 (() => {
     const existingNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingNames));
-    const existingCodes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingCodes));
     const normalize = value => (value || '').trim().toLowerCase();
 
     function bindWarning(inputSelector, warningSelector, values) {
@@ -122,6 +124,31 @@
     }
 
     bindWarning('.js-specialty-name', '.js-name-warning', existingNames);
-    bindWarning('.js-specialty-code', '.js-code-warning', existingCodes);
+
+    const roomList = document.getElementById('roomList');
+    const addRoomButton = document.getElementById('addRoomButton');
+
+    function bindRemove(button) {
+        button.addEventListener('click', () => {
+            const rows = roomList.querySelectorAll('.room-row');
+            if (rows.length <= 1) {
+                const input = button.closest('.room-row')?.querySelector('input');
+                if (input) input.value = '';
+                return;
+            }
+            button.closest('.room-row')?.remove();
+        });
+    }
+
+    addRoomButton?.addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'input-group room-row';
+        row.innerHTML = '<input class="form-control" name="RoomNumbers" placeholder="VD: P.101" /><button class="btn btn-outline-danger room-remove" type="button">Xóa</button>';
+        roomList.appendChild(row);
+        bindRemove(row.querySelector('.room-remove'));
+        row.querySelector('input')?.focus();
+    });
+
+    roomList?.querySelectorAll('.room-remove').forEach(bindRemove);
 })();
 </script>
