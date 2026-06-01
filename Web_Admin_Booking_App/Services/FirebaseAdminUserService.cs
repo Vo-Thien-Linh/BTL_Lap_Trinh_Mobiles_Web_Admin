@@ -26,7 +26,7 @@ public sealed class FirebaseAdminUserService
         IEnumerable<string> collections =
             _settings.UserCollections != null && _settings.UserCollections.Any()
                 ? _settings.UserCollections
-                : new[] { "Users", "users" };
+                : new[] { "users" };
 
         foreach (var collectionName in collections)
         {

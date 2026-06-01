@@ -75,6 +75,7 @@
                             <div><span class="badge @StatusBadge(d.UserStatus)">@ValueOrDash(d.UserStatus)</span></div>
                             <div class="mt-1"><span class="badge @StatusBadge(d.VerificationStatus)">@ValueOrDash(d.VerificationStatus)</span></div>
                             <div class="text-secondary small mt-1">Hoạt động: @(d.IsActive == true ? "Có" : "Không")</div>
+                            <div class="text-secondary small mt-1">Nổi bật: @(d.IsFeatured == true ? $"Có{(d.FeaturedRank.HasValue ? $" - hạng {d.FeaturedRank}" : string.Empty)}" : "Không")</div>
                         </td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-light" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.DocumentId">Xem</a>

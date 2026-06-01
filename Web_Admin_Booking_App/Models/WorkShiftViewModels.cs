@@ -1,10 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Web_Admin_Booking_App.Models;
 
 public enum ShiftType
 {
     Morning = 1,
     Afternoon = 2,
-    Night = 3,
 }
 
 public enum AssignmentStatus
@@ -30,6 +31,7 @@ public class WorkShiftsIndexViewModel
 
     public string MonthLabel { get; set; } = string.Empty;
     public CalendarMonthViewModel Calendar { get; set; } = new();
+    public WeeklyScheduleTableViewModel WeeklyTable { get; set; } = new();
 
     public string TodayLabel { get; set; } = string.Empty;
     public IReadOnlyList<TodayAssignmentViewModel> TodayAssignments { get; set; } = Array.Empty<TodayAssignmentViewModel>();
@@ -38,13 +40,30 @@ public class WorkShiftsIndexViewModel
 
 public class WorkScheduleGenerateViewModel
 {
+    [Required(ErrorMessage = "Vui lòng chọn bác sĩ.")]
     public string DoctorId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn khoa.")]
     public string DepartmentId { get; set; } = string.Empty;
-    public string Room { get; set; } = string.Empty;
+
+    public string RoomId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn phòng.")]
+    public string RoomNumber { get; set; } = string.Empty;
+
+    [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một ca làm việc.")]
     public List<string> ShiftIds { get; set; } = new();
+
+    [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một thứ trong tuần.")]
     public List<DayOfWeek> DaysOfWeek { get; set; } = new();
+
+    [Required(ErrorMessage = "Vui lòng chọn ngày bắt đầu.")]
     public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    [Range(1, 8, ErrorMessage = "Số tuần phải từ 1 đến 8.")]
     public int WeeksAhead { get; set; } = 4;
+
+    [Range(1, 100, ErrorMessage = "Số slot mỗi ca phải từ 1 đến 100.")]
     public int AvailableSlots { get; set; } = 10;
 }
 
@@ -52,7 +71,10 @@ public class WorkScheduleBackfillRoomViewModel
 {
     public string DoctorId { get; set; } = string.Empty;
     public string DepartmentId { get; set; } = string.Empty;
-    public string Room { get; set; } = string.Empty;
+    public string RoomId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn phòng.")]
+    public string RoomNumber { get; set; } = string.Empty;
 }
 
 public class DoctorScheduleRowViewModel
@@ -61,12 +83,51 @@ public class DoctorScheduleRowViewModel
     public DateOnly Date { get; set; }
     public string DoctorName { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
-    public string Room { get; set; } = string.Empty;
+    public string RoomId { get; set; } = string.Empty;
+    public string RoomNumber { get; set; } = string.Empty;
+    public ShiftType ShiftType { get; set; } = ShiftType.Morning;
+    public int MaxSlots { get; set; }
     public string ShiftName { get; set; } = string.Empty;
     public string ShiftTime { get; set; } = string.Empty;
     public int AvailableSlots { get; set; }
     public bool IsActive { get; set; }
     public string Status { get; set; } = string.Empty;
+}
+
+public class WeeklyScheduleTableViewModel
+{
+    public DateOnly WeekStart { get; set; }
+    public DateOnly WeekEnd { get; set; }
+    public IReadOnlyList<WeeklyScheduleDayViewModel> Days { get; set; } = Array.Empty<WeeklyScheduleDayViewModel>();
+    public IReadOnlyList<WeeklyScheduleRoomRowViewModel> Rows { get; set; } = Array.Empty<WeeklyScheduleRoomRowViewModel>();
+}
+
+public class WeeklyScheduleDayViewModel
+{
+    public DateOnly Date { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public bool IsToday { get; set; }
+}
+
+public class WeeklyScheduleRoomRowViewModel
+{
+    public int Index { get; set; }
+    public string RoomNumber { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string LocationLabel { get; set; } = string.Empty;
+    public IReadOnlyDictionary<DateOnly, IReadOnlyList<WeeklyScheduleCellItemViewModel>> ItemsByDate { get; set; } =
+        new Dictionary<DateOnly, IReadOnlyList<WeeklyScheduleCellItemViewModel>>();
+}
+
+public class WeeklyScheduleCellItemViewModel
+{
+    public string DoctorName { get; set; } = string.Empty;
+    public string ShiftName { get; set; } = string.Empty;
+    public string ShiftTime { get; set; } = string.Empty;
+    public ShiftType ShiftType { get; set; } = ShiftType.Morning;
+    public bool IsActive { get; set; }
+    public int AvailableSlots { get; set; }
+    public int MaxSlots { get; set; }
 }
 
 public class CalendarMonthViewModel

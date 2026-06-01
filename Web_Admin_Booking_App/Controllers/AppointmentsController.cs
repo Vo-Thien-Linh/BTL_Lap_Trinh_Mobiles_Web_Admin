@@ -13,10 +13,61 @@ public class AppointmentsController : Controller
         _dataService = dataService;
     }
 
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? statusFilter, CancellationToken cancellationToken)
     {
         var items = await _dataService.GetAppointmentsAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(statusFilter) &&
+            Enum.TryParse<AppointmentStatus>(statusFilter, true, out var status))
+        {
+            items = items.Where(x => x.Status == status).ToList();
+        }
+
+        ViewData["StatusFilter"] = statusFilter;
         return View(items);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveCancel(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+        try
+        {
+            await _dataService.ApproveAppointmentCancelRequestAsync(
+                id,
+                User.Identity?.Name ?? "admin",
+                CancellationToken.None);
+            TempData["InfoMessage"] = "Đã duyệt hủy lịch và trả lại slot cho ca làm việc.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(AppointmentStatus.CancelRequested) });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkCompleted(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+        try
+        {
+            await _dataService.MarkAppointmentCompletedAsync(
+                id,
+                User.Identity?.Name ?? "admin",
+                CancellationToken.None);
+            TempData["InfoMessage"] = "Đã chuyển lịch hẹn sang trạng thái đã khám.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]

@@ -35,6 +35,7 @@ public sealed class PatientIndexViewModel
 public sealed class PatientListItemViewModel
 {
     public string Id { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string FullName { get; set; } = "Chưa có tên";
     public string Phone { get; set; } = "Chưa có số điện thoại";
     public string Email { get; set; } = string.Empty;
@@ -60,6 +61,7 @@ public sealed class PatientListItemViewModel
 public sealed class PatientDetailsViewModel
 {
     public string Id { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string FullName { get; set; } = "Chưa có tên";
     public string Username { get; set; } = string.Empty;
     public string Phone { get; set; } = "Chưa có số điện thoại";
