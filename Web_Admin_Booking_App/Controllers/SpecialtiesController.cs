@@ -7,11 +7,13 @@ namespace Web_Admin_Booking_App.Controllers;
 public sealed class SpecialtiesController : Controller
 {
     private readonly FirestoreDb _firestore;
+    private readonly IWebHostEnvironment _environment;
     private const string PrimaryCollection = "Departments";
 
-    public SpecialtiesController(FirestoreDb firestore)
+    public SpecialtiesController(FirestoreDb firestore, IWebHostEnvironment environment)
     {
         _firestore = firestore;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -59,7 +61,8 @@ public sealed class SpecialtiesController : Controller
     [HttpGet]
     public async Task<IActionResult> Create(CancellationToken cancellationToken = default)
     {
-        var model = await BuildUpsertModelAsync(new SpecialtyUpsertViewModel(), cancellationToken);
+        var model = await BuildUpsertModelAsync(new SpecialtyUpsertViewModel(), CancellationToken.None);
+        model.CodePreview = await GetNextDepartmentCodePreviewAsync(CancellationToken.None);
         return View(model);
     }
 
@@ -67,15 +70,19 @@ public sealed class SpecialtiesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(SpecialtyUpsertViewModel model, CancellationToken cancellationToken = default)
     {
-        await EnforceUniqueSpecialtyAsync(model, null, cancellationToken);
+        NormalizeRooms(model);
+        await EnforceUniqueSpecialtyAsync(model, null, CancellationToken.None);
+        if (ModelState.IsValid)
+        {
+            await SaveDepartmentLogoAsync(model);
+        }
         if (!ModelState.IsValid)
         {
-            model = await BuildUpsertModelAsync(model, cancellationToken);
+            model = await BuildUpsertModelAsync(model, CancellationToken.None);
             return View(model);
         }
 
-        var documentId = BuildSpecialtyDocumentId(model.Code, model.Name);
-        await _firestore.Collection(PrimaryCollection).Document(documentId).SetAsync(ToFirestorePayload(model, true), cancellationToken: cancellationToken);
+        await CreateSpecialtyAsync(model);
         TempData["SuccessMessage"] = "Đã thêm chuyên khoa mới.";
         return RedirectToAction(nameof(Index));
     }
@@ -83,7 +90,7 @@ public sealed class SpecialtiesController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(string id, CancellationToken cancellationToken = default)
     {
-        var item = await FindSpecialtyAsync(id, cancellationToken);
+        var item = await FindSpecialtyAsync(id, CancellationToken.None);
         if (item == null) return NotFound();
 
         var model = new SpecialtyUpsertViewModel
@@ -91,6 +98,11 @@ public sealed class SpecialtiesController : Controller
             Id = item.Id,
             Name = item.Name,
             Code = item.Code,
+            CodePreview = item.Code,
+            Description = item.Description,
+            Phone = item.Phone,
+            ImageUrl = item.ImageUrl,
+            RoomNumbers = (await LoadDepartmentRoomLinesAsync(item.Id, CancellationToken.None)).ToList(),
             HeadDoctor = item.HeadDoctor,
             DoctorCount = item.DoctorCount,
             LocationNote = item.LocationNote,
@@ -98,7 +110,7 @@ public sealed class SpecialtiesController : Controller
             Icon = item.Icon
         };
 
-        model = await BuildUpsertModelAsync(model, cancellationToken);
+        model = await BuildUpsertModelAsync(model, CancellationToken.None);
         return View(model);
     }
 
@@ -108,17 +120,22 @@ public sealed class SpecialtiesController : Controller
     {
         if (string.IsNullOrWhiteSpace(model.Id)) return BadRequest();
 
-        await EnforceUniqueSpecialtyAsync(model, model.Id, cancellationToken);
+        NormalizeRooms(model);
+        await EnforceUniqueSpecialtyAsync(model, model.Id, CancellationToken.None);
+        if (ModelState.IsValid)
+        {
+            await SaveDepartmentLogoAsync(model);
+        }
         if (!ModelState.IsValid)
         {
-            model = await BuildUpsertModelAsync(model, cancellationToken);
+            model = await BuildUpsertModelAsync(model, CancellationToken.None);
             return View(model);
         }
 
-        var docRef = await FindSpecialtyDocumentReferenceAsync(model.Id, cancellationToken);
+        var docRef = await FindSpecialtyDocumentReferenceAsync(model.Id, CancellationToken.None);
         if (docRef == null) return NotFound();
 
-        await docRef.SetAsync(ToFirestorePayload(model, false), SetOptions.MergeAll, cancellationToken);
+        await docRef.SetAsync(ToFirestorePayload(model, false), SetOptions.MergeAll, CancellationToken.None);
         TempData["SuccessMessage"] = "Đã cập nhật chuyên khoa.";
         return RedirectToAction(nameof(Index));
     }
@@ -129,10 +146,10 @@ public sealed class SpecialtiesController : Controller
     {
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();
 
-        var docRef = await FindSpecialtyDocumentReferenceAsync(id, cancellationToken);
+        var docRef = await FindSpecialtyDocumentReferenceAsync(id, CancellationToken.None);
         if (docRef == null) return NotFound();
 
-        await docRef.DeleteAsync(cancellationToken: cancellationToken);
+        await docRef.DeleteAsync(cancellationToken: CancellationToken.None);
         TempData["SuccessMessage"] = "Đã xóa chuyên khoa.";
         return RedirectToAction(nameof(Index));
     }
@@ -152,16 +169,46 @@ public sealed class SpecialtiesController : Controller
         return model;
     }
 
+    private async Task<string> GetNextDepartmentCodePreviewAsync(CancellationToken cancellationToken)
+    {
+        var counterRef = _firestore.Collection("Counters").Document("document_codes");
+        var counterSnapshot = await counterRef.GetSnapshotAsync(cancellationToken);
+        var nextDepartmentNumber = Math.Max(1, GetInt(counterSnapshot, "departmentsNext") ?? 1);
+
+        while (true)
+        {
+            var departmentId = FormatSequentialCode("K", nextDepartmentNumber);
+            if (await IsDepartmentCodeAvailableAsync(departmentId, nextDepartmentNumber, cancellationToken))
+            {
+                return departmentId;
+            }
+
+            nextDepartmentNumber++;
+        }
+    }
+
+    private async Task<bool> IsDepartmentCodeAvailableAsync(string departmentId, int departmentNumber, CancellationToken cancellationToken)
+    {
+        var departmentSnapshot = await _firestore.Collection(PrimaryCollection).Document(departmentId).GetSnapshotAsync(cancellationToken);
+        if (departmentSnapshot.Exists) return false;
+
+        var legacyDepartmentId = $"K{departmentNumber:000}";
+        if (string.Equals(legacyDepartmentId, departmentId, StringComparison.OrdinalIgnoreCase)) return true;
+
+        var legacySnapshot = await _firestore.Collection(PrimaryCollection).Document(legacyDepartmentId).GetSnapshotAsync(cancellationToken);
+        return !legacySnapshot.Exists;
+    }
+
     private async Task<List<string>> LoadDoctorSuggestionsAsync(CancellationToken cancellationToken)
     {
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var collectionName in new[] { "Doctors", "doctors", "Users", "users" })
+        foreach (var collectionName in new[] { "users" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents)
             {
                 var role = GetString(doc, "role", "Role")?.Trim().ToLowerInvariant();
-                if (collectionName.Contains("user", StringComparison.OrdinalIgnoreCase) && role != "doctor") continue;
+                if (role != "doctor") continue;
 
                 var name = GetString(doc, "fullName", "doctorName", "name", "username", "FullName");
                 if (!string.IsNullOrWhiteSpace(name)) result.Add(name);
@@ -181,10 +228,47 @@ public sealed class SpecialtiesController : Controller
             ModelState.AddModelError(nameof(model.Name), "Tên chuyên khoa này đã tồn tại.");
         }
 
-        if (all.Any(x => !string.Equals(x.Id, currentId, StringComparison.OrdinalIgnoreCase) && NormalizeText(x.Code) == normalizedCode))
+        if (!string.IsNullOrWhiteSpace(normalizedCode) &&
+            all.Any(x => !string.Equals(x.Id, currentId, StringComparison.OrdinalIgnoreCase) && NormalizeText(x.Code) == normalizedCode))
         {
             ModelState.AddModelError(nameof(model.Code), "Mã khoa này đã tồn tại.");
         }
+    }
+
+    private async Task<string> CreateSpecialtyAsync(SpecialtyUpsertViewModel model)
+    {
+        return await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var now = Timestamp.GetCurrentTimestamp();
+            var counterRef = _firestore.Collection("Counters").Document("document_codes");
+            var counterSnapshot = await transaction.GetSnapshotAsync(counterRef, CancellationToken.None);
+            var nextDepartmentNumber = Math.Max(1, GetInt(counterSnapshot, "departmentsNext") ?? 1);
+            string departmentId;
+            DocumentReference departmentRef;
+
+            while (true)
+            {
+                departmentId = FormatSequentialCode("K", nextDepartmentNumber);
+                departmentRef = _firestore.Collection(PrimaryCollection).Document(departmentId);
+                var departmentSnapshot = await transaction.GetSnapshotAsync(departmentRef, CancellationToken.None);
+                var legacyDepartmentId = $"K{nextDepartmentNumber:000}";
+                var legacyDepartmentSnapshot = string.Equals(legacyDepartmentId, departmentId, StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : await transaction.GetSnapshotAsync(_firestore.Collection(PrimaryCollection).Document(legacyDepartmentId), CancellationToken.None);
+                if (!departmentSnapshot.Exists && legacyDepartmentSnapshot?.Exists != true) break;
+                nextDepartmentNumber++;
+            }
+
+            model.Code = departmentId;
+            transaction.Set(departmentRef, ToFirestorePayload(model, true), SetOptions.MergeAll);
+            transaction.Set(counterRef, new Dictionary<string, object>
+            {
+                ["departmentsNext"] = nextDepartmentNumber + 1,
+                ["updatedAt"] = now
+            }, SetOptions.MergeAll);
+
+            return departmentId;
+        }, cancellationToken: CancellationToken.None);
     }
 
     private static Dictionary<string, object?> ToFirestorePayload(SpecialtyUpsertViewModel model, bool isCreate)
@@ -192,15 +276,31 @@ public sealed class SpecialtiesController : Controller
         var payload = new Dictionary<string, object?>
         {
             ["name"] = model.Name.Trim(),
-            ["code"] = model.Code.Trim(),
+            ["departmentName"] = model.Name.Trim(),
+            ["description"] = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
+            ["phone"] = string.IsNullOrWhiteSpace(model.Phone) ? null : NormalizeDigits(model.Phone),
+            ["imageUrl"] = string.IsNullOrWhiteSpace(model.ImageUrl) ? null : model.ImageUrl.Trim(),
             ["headDoctor"] = model.HeadDoctor.Trim(),
             ["doctorCount"] = Math.Max(0, model.DoctorCount),
             ["location"] = model.LocationNote.Trim(),
             ["locationNote"] = model.LocationNote.Trim(),
             ["status"] = model.Status == SpecialtyStatus.Active ? "active" : "paused",
+            ["isActive"] = model.Status == SpecialtyStatus.Active,
             ["icon"] = model.Icon.ToString(),
             ["updatedAt"] = Timestamp.GetCurrentTimestamp()
         };
+
+        if (!string.IsNullOrWhiteSpace(model.Code))
+        {
+            payload["code"] = model.Code.Trim();
+            payload["departmentCode"] = model.Code.Trim();
+        }
+
+        var rooms = BuildRoomPayload(model.RoomNumbers);
+        if (rooms.Count > 0)
+        {
+            payload["rooms"] = rooms;
+        }
 
         if (isCreate)
         {
@@ -255,6 +355,10 @@ public sealed class SpecialtiesController : Controller
             Id = doc.Id,
             Name = GetString(doc, "name", "Name", "departmentName", "specialtyName") ?? "Chưa có tên",
             Code = GetString(doc, "code", "Code", "departmentCode") ?? doc.Id,
+            Description = GetString(doc, "description", "Description") ?? string.Empty,
+            Phone = GetString(doc, "phone", "Phone") ?? string.Empty,
+            ImageUrl = GetString(doc, "imageUrl", "ImageUrl", "image", "thumbnailUrl") ?? string.Empty,
+            RoomCount = GetRoomDisplayNames(doc).Count,
             HeadDoctor = GetString(doc, "headDoctor", "HeadDoctor", "managerName", "leaderName") ?? "Chưa phân công",
             DoctorCount = GetInt(doc, "doctorCount", "DoctorCount", "totalDoctors") ?? 0,
             LocationNote = GetString(doc, "location", "Location", "locationNote", "floor") ?? "Chưa cập nhật",
@@ -283,6 +387,55 @@ public sealed class SpecialtiesController : Controller
             if (snap.Exists) return docRef;
         }
         return null;
+    }
+
+    private async Task<IReadOnlyList<string>> LoadDepartmentRoomLinesAsync(string id, CancellationToken cancellationToken)
+    {
+        foreach (var collectionName in new[] { "Departments", "departments" })
+        {
+            var snap = await _firestore.Collection(collectionName).Document(id).GetSnapshotAsync(cancellationToken);
+            if (snap.Exists) return GetRoomDisplayNames(snap);
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static void NormalizeRooms(SpecialtyUpsertViewModel model)
+    {
+        model.RoomNumbers = model.RoomNumbers
+            .Select(x => x?.Trim() ?? string.Empty)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task SaveDepartmentLogoAsync(SpecialtyUpsertViewModel model)
+    {
+        if (model.LogoFile is null || model.LogoFile.Length == 0) return;
+
+        var extension = Path.GetExtension(model.LogoFile.FileName).ToLowerInvariant();
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+        if (!allowed.Contains(extension))
+        {
+            ModelState.AddModelError(nameof(model.LogoFile), "Logo khoa chỉ hỗ trợ JPG, PNG hoặc WEBP.");
+            return;
+        }
+
+        if (model.LogoFile.Length > 2 * 1024 * 1024)
+        {
+            ModelState.AddModelError(nameof(model.LogoFile), "Logo khoa không được vượt quá 2MB.");
+            return;
+        }
+
+        var uploadsRoot = Path.Combine(_environment.WebRootPath, "uploads", "departments");
+        Directory.CreateDirectory(uploadsRoot);
+
+        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var fullPath = Path.Combine(uploadsRoot, fileName);
+        await using var stream = System.IO.File.Create(fullPath);
+        await model.LogoFile.CopyToAsync(stream);
+
+        model.ImageUrl = $"/uploads/departments/{fileName}";
     }
 
     private static IEnumerable<SpecialtyListItemViewModel> ApplySpecialtyFilters(IEnumerable<SpecialtyListItemViewModel> source, string? search, string? statusFilter)
@@ -320,18 +473,19 @@ public sealed class SpecialtiesController : Controller
 
         return null;
     }
-
-    private static string BuildSpecialtyDocumentId(string code, string name)
-    {
-        var source = !string.IsNullOrWhiteSpace(code) ? code : name;
-        var safe = new string(source.Trim().ToLowerInvariant().Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray());
-        while (safe.Contains("__", StringComparison.Ordinal)) safe = safe.Replace("__", "_", StringComparison.Ordinal);
-        return string.IsNullOrWhiteSpace(safe) ? Guid.NewGuid().ToString("N") : safe.Trim('_');
-    }
-
     private static string NormalizeText(string? value)
     {
         return (value ?? string.Empty).Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeDigits(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : new string(value.Where(char.IsDigit).ToArray());
+    }
+
+    private static string FormatSequentialCode(string prefix, int number)
+    {
+        return $"{prefix}{number:0000}";
     }
 
     private static string? GetString(DocumentSnapshot doc, params string[] fields)
@@ -389,6 +543,89 @@ public sealed class SpecialtiesController : Controller
             catch { }
         }
         return null;
+    }
+
+    private static List<Dictionary<string, object>> BuildRoomPayload(IEnumerable<string> roomNumbers)
+    {
+        return roomNumbers
+            .Select(x => x?.Trim() ?? string.Empty)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(room =>
+            {
+                var roomNumber = room.Trim();
+                return new Dictionary<string, object>
+                {
+                    ["roomId"] = NormalizeRoomId(roomNumber),
+                    ["roomNumber"] = roomNumber,
+                    ["name"] = roomNumber,
+                    ["isActive"] = true
+                };
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyList<string> GetRoomDisplayNames(DocumentSnapshot doc)
+    {
+        foreach (var field in new[] { "rooms", "Rooms", "roomNames", "RoomNames" })
+        {
+            if (!doc.ContainsField(field)) continue;
+
+            try
+            {
+                var value = doc.GetValue<object?>(field);
+                return value switch
+                {
+                    IEnumerable<object> list => list
+                        .Select(GetRoomDisplayName)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Select(x => x!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x)
+                        .ToList(),
+                    string text => text
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x)
+                        .ToList(),
+                    _ => Array.Empty<string>()
+                };
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static string? GetRoomDisplayName(object? value)
+    {
+        if (value is null) return null;
+        if (value is string text) return text.Trim();
+
+        if (value is IDictionary<string, object> map)
+        {
+            return GetRoomField(map, "roomNumber")
+                ?? GetRoomField(map, "name")
+                ?? GetRoomField(map, "roomId");
+        }
+
+        return value.ToString()?.Trim();
+    }
+
+    private static string? GetRoomField(IDictionary<string, object> map, string fieldName)
+    {
+        if (!map.TryGetValue(fieldName, out var value)) return null;
+
+        var text = value?.ToString()?.Trim();
+        return string.IsNullOrWhiteSpace(text) ? null : text;
+    }
+
+    private static string NormalizeRoomId(string value)
+    {
+        return new string(value.Trim().ToLowerInvariant().Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
     }
 
     private static SpecialtyStatus ParseSpecialtyStatus(string? value)

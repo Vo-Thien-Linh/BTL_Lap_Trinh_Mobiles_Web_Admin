@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Grpc.Core;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
@@ -21,7 +22,19 @@ public class AppointmentsController : Controller
         string? selectedId,
         CancellationToken cancellationToken)
     {
-        var items = await _dataService.GetAppointmentsAsync(cancellationToken);
+        IReadOnlyList<AppointmentListItemViewModel> items;
+        WorkShiftsIndexViewModel? scheduleModel = null;
+        try
+        {
+            items = await _dataService.GetAppointmentsAsync(cancellationToken);
+            scheduleModel = await _dataService.GetWorkShiftsAsync("calendar", null, cancellationToken);
+        }
+        catch (RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.ResourceExhausted)
+        {
+            TempData["ErrorMessage"] = "Firestore đang vượt quota đọc dữ liệu. Vui lòng thử lại sau.";
+            items = Array.Empty<AppointmentListItemViewModel>();
+        }
+
         var filterError = ValidateFilters(search, statusFilter, fromDate, toDate);
         var filtered = filterError == null
             ? ApplyFilters(items, search, statusFilter, fromDate, toDate).ToList()
@@ -55,7 +68,70 @@ public class AppointmentsController : Controller
             Items = filtered
         };
 
+        ViewData["WeeklySchedule"] = scheduleModel?.WeeklyTable ?? new WeeklyScheduleTableViewModel();
+
         return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DoctorSchedulePartial(int weekOffset = 0, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var weekStart = today.AddDays(-DayOfWeekToMondayBased(today.DayOfWeek)).AddDays(weekOffset * 7);
+            var model = await _dataService.GetWorkShiftsAsync("calendar", weekStart, cancellationToken);
+            return PartialView("_DoctorSchedulePartial", model.WeeklyTable);
+        }
+        catch (RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.ResourceExhausted)
+        {
+            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            return Content("Firestore đang vượt quota đọc dữ liệu. Vui lòng thử lại sau.");
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveCancel(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+        try
+        {
+            await _dataService.ApproveAppointmentCancelRequestAsync(
+                id,
+                User.Identity?.Name ?? "admin",
+                CancellationToken.None);
+            TempData["InfoMessage"] = "Đã duyệt hủy lịch và trả lại slot cho ca làm việc.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(AppointmentStatus.CancelRequested) });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkCompleted(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+        try
+        {
+            await _dataService.MarkAppointmentCompletedAsync(
+                id,
+                User.Identity?.Name ?? "admin",
+                CancellationToken.None);
+            TempData["InfoMessage"] = "Đã chuyển lịch hẹn sang trạng thái đã khám.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
@@ -164,5 +240,20 @@ public class AppointmentsController : Controller
         return string.Equals(item.Id, selectedId, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(item.DocumentId, selectedId, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(item.AppointmentCode, selectedId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int DayOfWeekToMondayBased(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => 0,
+            DayOfWeek.Tuesday => 1,
+            DayOfWeek.Wednesday => 2,
+            DayOfWeek.Thursday => 3,
+            DayOfWeek.Friday => 4,
+            DayOfWeek.Saturday => 5,
+            DayOfWeek.Sunday => 6,
+            _ => 0
+        };
     }
 }

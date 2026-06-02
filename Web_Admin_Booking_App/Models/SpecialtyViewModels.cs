@@ -41,6 +41,10 @@ public sealed class SpecialtyListItemViewModel
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string LocationNote { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public int RoomCount { get; set; }
     public string Code { get; set; } = string.Empty;
     public string HeadDoctor { get; set; } = string.Empty;
     public int DoctorCount { get; set; }
@@ -52,6 +56,7 @@ public sealed class SpecialtyListItemViewModel
 public sealed class SpecialtyUpsertViewModel
 {
     public string Id { get; set; } = string.Empty;
+    public string CodePreview { get; set; } = string.Empty;
 
     [Display(Name = "Tên chuyên khoa")]
     [Required(ErrorMessage = "Vui lòng nhập tên chuyên khoa")]
@@ -59,7 +64,6 @@ public sealed class SpecialtyUpsertViewModel
     public string Name { get; set; } = string.Empty;
 
     [Display(Name = "Mã khoa")]
-    [Required(ErrorMessage = "Vui lòng nhập mã khoa")]
     [StringLength(40, ErrorMessage = "Mã khoa không được vượt quá 40 ký tự")]
     public string Code { get; set; } = string.Empty;
 
@@ -74,6 +78,26 @@ public sealed class SpecialtyUpsertViewModel
     [Display(Name = "Vị trí")]
     [StringLength(160, ErrorMessage = "Vị trí không được vượt quá 160 ký tự")]
     public string LocationNote { get; set; } = string.Empty;
+
+    [Display(Name = "Mô tả")]
+    [StringLength(600, ErrorMessage = "Mô tả không được vượt quá 600 ký tự")]
+    public string Description { get; set; } = string.Empty;
+
+    [Display(Name = "Số điện thoại khoa")]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Số điện thoại phải gồm đúng 10 chữ số")]
+    public string Phone { get; set; } = string.Empty;
+
+    [Display(Name = "Ảnh khoa")]
+    [StringLength(500, ErrorMessage = "Đường dẫn ảnh không được vượt quá 500 ký tự")]
+    public string ImageUrl { get; set; } = string.Empty;
+
+    [Display(Name = "Logo khoa")]
+    public IFormFile? LogoFile { get; set; }
+
+    [Display(Name = "Phòng khám")]
+    public string RoomsText { get; set; } = string.Empty;
+
+    public List<string> RoomNumbers { get; set; } = new();
 
     [Display(Name = "Trạng thái")]
     public SpecialtyStatus Status { get; set; } = SpecialtyStatus.Active;

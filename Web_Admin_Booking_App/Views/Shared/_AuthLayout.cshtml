@@ -4,13 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MediAdmin</title>
-
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body class="auth-body">
-    <main>
-        @RenderBody()
+    <main class="auth-shell">
+        <section class="auth-hero" aria-label="Giới thiệu hệ thống">
+            <div class="auth-hero__mark">+</div>
+            <h1>MediAdmin</h1>
+            <p>Không gian quản trị lịch khám, bác sĩ, bệnh nhân và thanh toán trong một dashboard gọn gàng.</p>
+            <div class="auth-feature-grid">
+                <div class="auth-feature">Lịch hẹn theo thời gian thực</div>
+                <div class="auth-feature">Hồ sơ bệnh nhân tập trung</div>
+                <div class="auth-feature">Báo cáo vận hành rõ ràng</div>
+            </div>
+        </section>
+        <section class="auth-panel">
+            @RenderBody()
+        </section>
     </main>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

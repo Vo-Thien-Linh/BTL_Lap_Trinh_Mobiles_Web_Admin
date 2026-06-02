@@ -1,0 +1,89 @@
+@model Web_Admin_Booking_App.Models.WeeklyScheduleTableViewModel
+
+<div class="doctor-schedule-partial">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <div class="fw-semibold text-uppercase">
+                Lịch làm việc bác sĩ từ ngày @Model.WeekStart.ToString("dd/MM/yyyy") đến ngày @Model.WeekEnd.ToString("dd/MM/yyyy")
+            </div>
+            <div class="text-secondary small">Bảng tuần theo phòng khám, cập nhật nhanh không reload toàn trang.</div>
+        </div>
+        <div class="admin-legend">
+            <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--morning"></span>Ca sáng</span>
+            <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--afternoon"></span>Ca chiều</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle admin-week-table mb-0">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width: 54px;">TT</th>
+                    <th style="width: 260px; min-width: 260px;">Phòng khám</th>
+                    @foreach (var day in Model.Days)
+                    {
+                        <th class="text-center @(day.IsToday ? "text-danger" : "")" style="min-width: 150px;">@day.Label</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="9"><div class="empty-state">Chưa có lịch làm việc trong tuần này.</div></td>
+                </tr>
+            }
+            else
+            {
+                foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td class="text-center">@row.Index</td>
+                        <td class="fw-semibold text-center">
+                            <div>@row.DepartmentName.ToUpperInvariant()</div>
+                            <div class="small text-secondary">(@row.LocationLabel)</div>
+                        </td>
+                        @foreach (var day in Model.Days)
+                        {
+                            var items = row.ItemsByDate.TryGetValue(day.Date, out var found)
+                                ? found
+                                : Array.Empty<Web_Admin_Booking_App.Models.WeeklyScheduleCellItemViewModel>();
+                            <td class="admin-week-cell @(items.Count == 0 ? "is-empty" : "")">
+                                @if (items.Count == 0)
+                                {
+                                    <span class="text-secondary small">-</span>
+                                }
+                                else
+                                {
+                                    foreach (var item in items)
+                                    {
+                                        <div class="admin-week-shift @WeekShiftClass(item)">
+                                            <div class="fw-bold">@item.DoctorName</div>
+                                            <div class="small">@ValueOrDash(item.ShiftName)</div>
+                                            @if (!string.IsNullOrWhiteSpace(item.ShiftTime))
+                                            {
+                                                <div class="small">@item.ShiftTime</div>
+                                            }
+                                            <div class="small text-secondary">Còn @item.AvailableSlots/@item.MaxSlots slot</div>
+                                        </div>
+                                    }
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@functions {
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string WeekShiftClass(Web_Admin_Booking_App.Models.WeeklyScheduleCellItemViewModel item)
+    {
+        if (!item.IsActive) return "is-off";
+        return item.ShiftType == Web_Admin_Booking_App.Models.ShiftType.Morning ? "is-morning" : "is-afternoon";
+    }
+}

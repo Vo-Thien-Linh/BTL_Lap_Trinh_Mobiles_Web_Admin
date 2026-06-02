@@ -34,7 +34,7 @@
     <div>
         <div class="eyebrow">Hồ sơ bệnh nhân</div>
         <h1 class="page-title mb-1">@Model.FullName</h1>
-        <p class="text-secondary mb-0">Mã bệnh nhân: @Model.Id</p>
+        <p class="text-secondary mb-0">Mã bệnh nhân: @Model.Code</p>
     </div>
     <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại danh sách</a>
 </div>
@@ -113,6 +113,42 @@
                 <div class="info-item"><span>Bệnh mạn tính</span><strong>@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</strong></div>
                 <div class="info-item"><span>Ghi chú</span><strong>@(string.IsNullOrWhiteSpace(Model.Notes) ? "Không có ghi chú" : Model.Notes)</strong></div>
             </div>
+        </section>
+        <section class="card detail-card">
+            <div class="detail-card__header">
+                <h3>Lịch hẹn gần đây</h3>
+                <span>Các lần khám mới nhất của bệnh nhân</span>
+            </div>
+            @if (Model.RecentAppointments.Count == 0)
+            {
+                <div class="empty-state">Chưa có lịch hẹn gần đây.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table admin-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Chuyên khoa</th>
+                                <th>Bác sĩ</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var appointment in Model.RecentAppointments)
+                        {
+                            <tr>
+                                <td>@(appointment.AppointmentDate?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
+                                <td>@appointment.DepartmentName</td>
+                                <td>@appointment.DoctorName</td>
+                                <td><span class="admin-badge admin-badge--info">@appointment.Status</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
         </section>
     </main>
 </div>

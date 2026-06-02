@@ -16,7 +16,40 @@
             <span>@ValueOrDash(Model.Specialization ?? Model.Department)</span>
         </div>
     </div>
-    <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
+    <div class="d-flex gap-2">
+        <form asp-controller="Doctors" asp-action="Approve" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.DocumentId" />
+            <button class="btn btn-success" type="submit">Duyệt hồ sơ</button>
+        </form>
+        <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#rejectForm">
+            Từ chối
+        </button>
+        <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
+    </div>
+</div>
+
+@if (TempData["InfoMessage"] is string message)
+{
+    <div class="alert alert-info">@message</div>
+}
+
+<div class="collapse mb-3" id="rejectForm">
+    <div class="card panel-card">
+        <div class="card-body">
+            <form asp-controller="Doctors" asp-action="Reject" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.DocumentId" />
+                <div class="col-md-9">
+                    <label class="form-label">Lý do từ chối</label>
+                    <input class="form-control" name="rejectReason" placeholder="VD: Chứng chỉ hành nghề chưa hợp lệ" />
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-danger w-100" type="submit">Xác nhận từ chối</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -58,7 +91,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 

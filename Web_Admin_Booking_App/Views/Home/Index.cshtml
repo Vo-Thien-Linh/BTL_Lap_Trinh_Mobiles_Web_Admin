@@ -7,6 +7,17 @@
 }
 
 <div class="dashboard-grid">
+    <section class="admin-hero-card">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <div class="eyebrow">Dữ liệu vận hành</div>
+                <h1 class="admin-page-title">Tổng quan hệ thống</h1>
+                <p class="admin-page-subtitle">Theo dõi lịch hẹn, bệnh nhân, bác sĩ và doanh thu.</p>
+            </div>
+            <span class="admin-badge admin-badge--success">Dữ liệu vận hành</span>
+        </div>
+    </section>
+
     <div class="row g-3">
         <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Tổng số bệnh nhân</div><div class="stat-card__value">@Model.PatientCount</div><div class="stat-card__hint text-primary">@Model.PatientGrowthPercent.ToString("0.#")% tháng này</div></div></div></div>
         <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Lịch hẹn hôm nay</div><div class="stat-card__value">@Model.TodayAppointmentCount</div><div class="stat-card__hint text-warning">@Model.WaitingAppointmentCount ca đang chờ</div></div></div></div>

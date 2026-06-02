@@ -10,6 +10,8 @@ public enum AppointmentStatus
     InProgress = 4,
     Completed = 5,
     Cancelled = 6,
+    CancelRequested = 7,
+    NoShow = 8,
 }
 
 public class AppointmentListItemViewModel
@@ -17,6 +19,7 @@ public class AppointmentListItemViewModel
     public string Id { get; set; } = string.Empty;
     public string DocumentId { get; set; } = string.Empty;
     public string AppointmentCode { get; set; } = string.Empty;
+    public string ScheduleId { get; set; } = string.Empty;
     public string? PatientId { get; set; }
     public string PatientName { get; set; } = string.Empty;
     public string PatientPhone { get; set; } = string.Empty;
@@ -29,12 +32,17 @@ public class AppointmentListItemViewModel
     public string DepartmentId { get; set; } = string.Empty;
     public string SpecialtyName { get; set; } = string.Empty;
     public string RoomName { get; set; } = string.Empty;
+    public int QueueNumber { get; set; }
     public string AppointmentType { get; set; } = string.Empty;
     public DateTime ScheduledAt { get; set; }
     public string Duration { get; set; } = string.Empty;
     public string ConsultationFee { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
     public string CancelReason { get; set; } = string.Empty;
+    public string CancelRequestedBy { get; set; } = string.Empty;
+    public DateTime? CancelRequestedAt { get; set; }
+    public string CancelledBy { get; set; } = string.Empty;
+    public DateTime? CancelledAt { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public AppointmentStatus Status { get; set; }
@@ -63,28 +71,28 @@ public class SelectOption
 
 public class AppointmentCreateViewModel
 {
-    [Required]
+    [Required(ErrorMessage = "Vui lòng nhập tên bệnh nhân.")]
     [Display(Name = "Tên bệnh nhân")]
     public string PatientName { get; set; } = string.Empty;
 
     [Display(Name = "Số điện thoại")]
     [Required]
-    [RegularExpression(@"^0\d{9}$", ErrorMessage = "So dien thoai phai gom 10 so va bat dau bang 0.")]
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại phải gồm 10 số và bắt đầu bằng 0.")]
     public string? PatientPhone { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Vui lòng chọn bác sĩ.")]
     [Display(Name = "Bác sĩ")]
     public string DoctorId { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Vui lòng chọn chuyên khoa.")]
     [Display(Name = "Chuyên khoa")]
     public string SpecialtyId { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Vui lòng chọn ngày khám.")]
     [Display(Name = "Ngày khám")]
     public DateOnly Date { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Vui lòng chọn giờ khám.")]
     [Display(Name = "Giờ khám")]
     public TimeOnly Time { get; set; }
 
