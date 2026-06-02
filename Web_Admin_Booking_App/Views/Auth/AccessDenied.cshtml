@@ -1,14 +1,17 @@
 @{
     Layout = "_AuthLayout";
+    ViewData["Title"] = "Không có quyền truy cập";
 }
-<div class="container" style="max-width: 560px; margin-top: 70px;">
-    <div class="alert alert-danger shadow-sm">
-        <h4 class="alert-heading">Không có quyền truy cập</h4>
+
+<div class="auth-card auth-card--warning">
+    <div class="auth-card__header">
+        <div class="auth-card__icon auth-card__icon--danger">!</div>
+        <h2>Không có quyền truy cập</h2>
         <p>Tài khoản của bạn không có quyền Admin để vào trang quản trị.</p>
-        <hr />
-        <form asp-controller="Auth" asp-action="Logout" method="post">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-danger">Đăng nhập bằng tài khoản khác</button>
-        </form>
     </div>
+
+    <form asp-controller="Auth" asp-action="Logout" method="post">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-danger auth-submit">Đăng nhập bằng tài khoản khác</button>
+    </form>
 </div>

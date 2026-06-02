@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Grpc.Core;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
@@ -13,17 +14,80 @@ public class AppointmentsController : Controller
         _dataService = dataService;
     }
 
-    public async Task<IActionResult> Index(string? statusFilter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        string? search,
+        string? statusFilter,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? selectedId,
+        CancellationToken cancellationToken)
     {
-        var items = await _dataService.GetAppointmentsAsync(cancellationToken);
-        if (!string.IsNullOrWhiteSpace(statusFilter) &&
-            Enum.TryParse<AppointmentStatus>(statusFilter, true, out var status))
+        IReadOnlyList<AppointmentListItemViewModel> items;
+        WorkShiftsIndexViewModel? scheduleModel = null;
+        try
         {
-            items = items.Where(x => x.Status == status).ToList();
+            items = await _dataService.GetAppointmentsAsync(cancellationToken);
+            scheduleModel = await _dataService.GetWorkShiftsAsync("calendar", null, cancellationToken);
+        }
+        catch (RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.ResourceExhausted)
+        {
+            TempData["ErrorMessage"] = "Firestore đang vượt quota đọc dữ liệu. Vui lòng thử lại sau.";
+            items = Array.Empty<AppointmentListItemViewModel>();
         }
 
-        ViewData["StatusFilter"] = statusFilter;
-        return View(items);
+        var filterError = ValidateFilters(search, statusFilter, fromDate, toDate);
+        var filtered = filterError == null
+            ? ApplyFilters(items, search, statusFilter, fromDate, toDate).ToList()
+            : new List<AppointmentListItemViewModel>();
+
+        if (!string.IsNullOrWhiteSpace(selectedId))
+        {
+            filtered = filtered
+                .OrderByDescending(x => IsSelectedAppointment(x, selectedId))
+                .ThenByDescending(x => x.ScheduledAt)
+                .ToList();
+        }
+        else
+        {
+            filtered = filtered.OrderByDescending(x => x.ScheduledAt).ToList();
+        }
+
+        var today = DateTime.Today;
+        var model = new AppointmentIndexViewModel
+        {
+            Search = search,
+            StatusFilter = statusFilter,
+            FromDate = fromDate,
+            ToDate = toDate,
+            SelectedId = selectedId,
+            FilterError = filterError,
+            TotalCount = items.Count,
+            TodayCount = items.Count(x => x.ScheduledAt.Date == today),
+            PendingCount = items.Count(x => x.Status == AppointmentStatus.Pending),
+            ActiveCount = items.Count(x => x.Status is AppointmentStatus.Confirmed or AppointmentStatus.Upcoming or AppointmentStatus.InProgress),
+            Items = filtered
+        };
+
+        ViewData["WeeklySchedule"] = scheduleModel?.WeeklyTable ?? new WeeklyScheduleTableViewModel();
+
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DoctorSchedulePartial(int weekOffset = 0, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var weekStart = today.AddDays(-DayOfWeekToMondayBased(today.DayOfWeek)).AddDays(weekOffset * 7);
+            var model = await _dataService.GetWorkShiftsAsync("calendar", weekStart, cancellationToken);
+            return PartialView("_DoctorSchedulePartial", model.WeeklyTable);
+        }
+        catch (RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.ResourceExhausted)
+        {
+            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            return Content("Firestore đang vượt quota đọc dữ liệu. Vui lòng thử lại sau.");
+        }
     }
 
     [HttpPost]
@@ -71,32 +135,125 @@ public class AppointmentsController : Controller
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var vm = new AppointmentCreateViewModel
         {
             Date = DateOnly.FromDateTime(DateTime.Today),
             Time = new TimeOnly(9, 0),
-            Status = AppointmentStatus.Pending,
-            Doctors = Array.Empty<SelectOption>(),
-            Specialties = Array.Empty<SelectOption>()
+            Status = AppointmentStatus.Pending
         };
 
-        return View(vm);
+        return View(await _dataService.BuildAppointmentCreateModelAsync(vm, cancellationToken));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(AppointmentCreateViewModel model)
+    public async Task<IActionResult> Create(AppointmentCreateViewModel model, CancellationToken cancellationToken)
     {
-        // Phần tạo lịch từ web admin nên làm sau khi thống nhất schema Firestore với app Flutter.
-        // Hiện tại ưu tiên đọc dữ liệu thật từ Firebase và bảo vệ đăng nhập admin.
+        if (model.Date < DateOnly.FromDateTime(DateTime.Today))
+        {
+            ModelState.AddModelError(nameof(model.Date), "Khong duoc chon ngay kham trong qua khu.");
+        }
+
         if (!ModelState.IsValid)
         {
+            model = await _dataService.BuildAppointmentCreateModelAsync(model, cancellationToken);
             return View(model);
         }
 
-        TempData["InfoMessage"] = "Chức năng tạo lịch từ Web Admin sẽ được nối Firestore ở bước tiếp theo.";
+        await _dataService.CreateAppointmentAsync(model, cancellationToken);
+        TempData["SuccessMessage"] = "Da luu lich hen moi.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DoctorsBySpecialty(string specialtyId, CancellationToken cancellationToken)
+    {
+        var doctors = await _dataService.GetDoctorOptionsByDepartmentAsync(specialtyId, cancellationToken);
+        return Json(doctors);
+    }
+
+    private static IEnumerable<AppointmentListItemViewModel> ApplyFilters(
+        IEnumerable<AppointmentListItemViewModel> source,
+        string? search,
+        string? statusFilter,
+        DateOnly? fromDate,
+        DateOnly? toDate)
+    {
+        var query = source;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var key = search.Trim().ToLowerInvariant();
+            query = query.Where(x =>
+                x.AppointmentCode.ToLowerInvariant().Contains(key) ||
+                x.Id.ToLowerInvariant().Contains(key) ||
+                x.DocumentId.ToLowerInvariant().Contains(key) ||
+                x.PatientName.ToLowerInvariant().Contains(key) ||
+                x.PatientPhone.ToLowerInvariant().Contains(key) ||
+                x.PatientEmail.ToLowerInvariant().Contains(key) ||
+                x.DoctorName.ToLowerInvariant().Contains(key) ||
+                x.SpecialtyName.ToLowerInvariant().Contains(key) ||
+                x.PatientNote.ToLowerInvariant().Contains(key));
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<AppointmentStatus>(statusFilter, true, out var status))
+        {
+            query = query.Where(x => x.Status == status);
+        }
+
+        if (fromDate.HasValue)
+        {
+            query = query.Where(x => x.ScheduledAt.Date >= fromDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(x => x.ScheduledAt.Date <= toDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
+        return query;
+    }
+
+    private static string? ValidateFilters(string? search, string? statusFilter, DateOnly? fromDate, DateOnly? toDate)
+    {
+        if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length > 100)
+        {
+            return "Từ khóa tìm kiếm không được vượt quá 100 ký tự.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && !Enum.TryParse<AppointmentStatus>(statusFilter, true, out _))
+        {
+            return "Trạng thái lịch hẹn không hợp lệ.";
+        }
+
+        if (fromDate.HasValue && toDate.HasValue && toDate.Value < fromDate.Value)
+        {
+            return "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.";
+        }
+
+        return null;
+    }
+
+    private static bool IsSelectedAppointment(AppointmentListItemViewModel item, string selectedId)
+    {
+        return string.Equals(item.Id, selectedId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.DocumentId, selectedId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.AppointmentCode, selectedId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int DayOfWeekToMondayBased(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => 0,
+            DayOfWeek.Tuesday => 1,
+            DayOfWeek.Wednesday => 2,
+            DayOfWeek.Thursday => 3,
+            DayOfWeek.Friday => 4,
+            DayOfWeek.Saturday => 5,
+            DayOfWeek.Sunday => 6,
+            _ => 0
+        };
     }
 }

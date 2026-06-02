@@ -2,6 +2,12 @@
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var adminName = User.Identity?.Name ?? "Admin User";
+    var pageTitle = (ViewData["PageTitle"] ?? ViewData["Title"] ?? "Dashboard").ToString();
+    var initials = adminName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var avatarText = initials.Length == 0
+        ? "AU"
+        : (initials.Length == 1 ? initials[0][..Math.Min(2, initials[0].Length)] : $"{initials[0][0]}{initials[^1][0]}").ToUpperInvariant();
+
     string Active(string controller, string? action = null)
     {
         if (!currentController.Equals(controller, StringComparison.OrdinalIgnoreCase)) return string.Empty;
@@ -30,31 +36,32 @@
                 </div>
             </div>
 
+            <a class="admin-cta" asp-controller="Appointments" asp-action="Create">
+                <span class="admin-nav__icon">+</span>
+                <span>Tạo lịch hẹn mới</span>
+            </a>
+
             <nav class="admin-nav" aria-label="Điều hướng quản trị">
-                <a class="admin-nav__link @(Active("Home", "Index"))" asp-controller="Home" asp-action="Index"><span class="admin-nav__dot"></span><span>Dashboard</span></a>
-                <a class="admin-nav__link @(Active("Doctors"))" asp-controller="Doctors" asp-action="Index"><span class="admin-nav__dot"></span><span>Bác sĩ</span></a>
-                <a class="admin-nav__link @(Active("Specialties"))" asp-controller="Specialties" asp-action="Index"><span class="admin-nav__dot"></span><span>Chuyên khoa</span></a>
-                <a class="admin-nav__link @(Active("Appointments"))" asp-controller="Appointments" asp-action="Index"><span class="admin-nav__dot"></span><span>Lịch hẹn</span></a>
-                <a class="admin-nav__link @(Active("MedicalRecords"))" asp-controller="MedicalRecords" asp-action="Index"><span class="admin-nav__dot"></span><span>Bệnh án</span></a>
-                <a class="admin-nav__link @(Active("Payments"))" asp-controller="Payments" asp-action="Index"><span class="admin-nav__dot"></span><span>Thanh toán</span></a>
-                <a class="admin-nav__link @(Active("Patients"))" asp-controller="Patients" asp-action="Index"><span class="admin-nav__dot"></span><span>Bệnh nhân</span></a>
-                <a class="admin-nav__link @(Active("WorkShifts"))" asp-controller="WorkShifts" asp-action="Index"><span class="admin-nav__dot"></span><span>Ca làm việc</span></a>
+                <a class="admin-nav__link @(Active("Home", "Index"))" asp-controller="Home" asp-action="Index"><span class="admin-nav__icon">D</span><span>Dashboard</span></a>
+                <a class="admin-nav__link @(Active("Doctors"))" asp-controller="Doctors" asp-action="Index"><span class="admin-nav__icon">BS</span><span>Bác sĩ</span></a>
+                <a class="admin-nav__link @(Active("Specialties"))" asp-controller="Specialties" asp-action="Index"><span class="admin-nav__icon">K</span><span>Chuyên khoa</span></a>
+                <a class="admin-nav__link @(Active("Appointments"))" asp-controller="Appointments" asp-action="Index"><span class="admin-nav__icon">LH</span><span>Lịch hẹn</span></a>
+                <a class="admin-nav__link @(Active("MedicalRecords"))" asp-controller="MedicalRecords" asp-action="Index"><span class="admin-nav__icon">BA</span><span>Bệnh án</span></a>
+                <a class="admin-nav__link @(Active("Payments"))" asp-controller="Payments" asp-action="Index"><span class="admin-nav__icon">$</span><span>Thanh toán</span></a>
+                <a class="admin-nav__link @(Active("Patients"))" asp-controller="Patients" asp-action="Index"><span class="admin-nav__icon">BN</span><span>Bệnh nhân</span></a>
+                <a class="admin-nav__link @(Active("WorkShifts"))" asp-controller="WorkShifts" asp-action="Index"><span class="admin-nav__icon">CA</span><span>Ca làm việc</span></a>
             </nav>
 
             <div class="admin-sidebar__bottom">
-                <a class="btn btn-light w-100 admin-cta" asp-controller="Appointments" asp-action="Create">
-                    Tạo lịch hẹn mới
-                </a>
-
                 <a class="admin-nav__link admin-sidebar-action" href="#">
-                    <span class="admin-nav__dot"></span>
+                    <span class="admin-nav__icon">C</span>
                     <span>Cài đặt</span>
                 </a>
 
                 <form asp-controller="Auth" asp-action="Logout" method="post" class="admin-logout-form">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="admin-nav__link admin-sidebar-action admin-nav__link--logout">
-                        <span class="admin-nav__logout-icon" aria-hidden="true">↪</span>
+                        <span class="admin-nav__icon">X</span>
                         <span>Đăng xuất</span>
                     </button>
                 </form>
@@ -63,25 +70,23 @@
 
         <section class="admin-main">
             <header class="admin-topbar">
-                <div>
-                    <div class="admin-topbar__title">@ViewData["PageTitle"]</div>
+                <div class="admin-topbar__heading">
+                    <div class="admin-topbar__title">@pageTitle</div>
                     <div class="admin-topbar__subtitle">Quản trị dữ liệu bệnh viện theo thời gian thực</div>
                 </div>
                 <div class="admin-topbar__search">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0">⌕</span>
-                        <input class="form-control border-start-0" type="search" placeholder="Tìm kiếm bác sĩ, khoa, bệnh nhân..." />
-                    </div>
+                    <span aria-hidden="true">⌕</span>
+                    <input type="search" placeholder="Tìm kiếm bác sĩ, khoa, bệnh nhân..." />
                 </div>
                 <div class="admin-topbar__right">
-                    <button type="button" class="btn btn-sm btn-outline-secondary admin-icon-btn">🔔</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary admin-icon-btn">?</button>
+                    <button type="button" class="admin-icon-btn" aria-label="Thông báo">!</button>
+                    <button type="button" class="admin-icon-btn" aria-label="Trợ giúp">?</button>
                     <div class="admin-user">
                         <div class="admin-user__meta">
                             <div class="admin-user__name">@adminName</div>
                             <div class="admin-user__role">Administrator</div>
                         </div>
-                        <div class="admin-user__avatar">@((adminName.Length >= 2 ? adminName[..2] : "AU").ToUpperInvariant())</div>
+                        <div class="admin-user__avatar">@avatarText</div>
                     </div>
                 </div>
             </header>
@@ -89,11 +94,11 @@
             <main class="admin-content">
                 @if (TempData["SuccessMessage"] is string success)
                 {
-                <div class="alert alert-success border-0 shadow-sm admin-alert">@success</div>
+                    <div class="alert alert-success border-0 shadow-sm admin-alert">@success</div>
                 }
                 @if (TempData["ErrorMessage"] is string error)
                 {
-                <div class="alert alert-danger border-0 shadow-sm admin-alert">@error</div>
+                    <div class="alert alert-danger border-0 shadow-sm admin-alert">@error</div>
                 }
                 @RenderBody()
             </main>

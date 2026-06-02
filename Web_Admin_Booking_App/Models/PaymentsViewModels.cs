@@ -19,6 +19,7 @@ public enum PaymentMethod
 public class TransactionListItemViewModel
 {
     public string Id { get; set; } = string.Empty;
+    public string SourceCollection { get; set; } = string.Empty;
     public string InvoiceCode { get; set; } = string.Empty;
     public string PatientName { get; set; } = string.Empty;
     public string ServiceName { get; set; } = string.Empty;
@@ -30,6 +31,13 @@ public class TransactionListItemViewModel
 
 public class PaymentsIndexViewModel
 {
+    public string? Search { get; set; }
+    public string? SourceFilter { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? MethodFilter { get; set; }
+    public DateOnly? FromDate { get; set; }
+    public DateOnly? ToDate { get; set; }
+    public string? FilterError { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalRevenueChangePercent { get; set; }
     public int SuccessfulToday { get; set; }
@@ -38,4 +46,34 @@ public class PaymentsIndexViewModel
     public string PeriodLabel { get; set; } = string.Empty;
 
     public IReadOnlyList<TransactionListItemViewModel> Transactions { get; set; } = Array.Empty<TransactionListItemViewModel>();
+}
+
+public class PaymentReceiptViewModel
+{
+    public string Id { get; set; } = string.Empty;
+    public string SourceCollection { get; set; } = string.Empty;
+    public string InvoiceCode { get; set; } = string.Empty;
+    public string PatientName { get; set; } = string.Empty;
+    public DateTime? PatientDob { get; set; }
+    public string PatientGender { get; set; } = string.Empty;
+    public string PatientAddress { get; set; } = string.Empty;
+    public string DoctorName { get; set; } = string.Empty;
+    public DateTime PaidAt { get; set; }
+    public PaymentMethod Method { get; set; }
+    public TransactionStatus Status { get; set; }
+    public decimal TotalAmountVnd { get; set; }
+    public decimal DiscountVnd { get; set; }
+    public decimal AmountDueVnd { get; set; }
+    public string AmountInWords { get; set; } = string.Empty;
+    public IReadOnlyList<PaymentReceiptLineItemViewModel> Items { get; set; } = Array.Empty<PaymentReceiptLineItemViewModel>();
+}
+
+public class PaymentReceiptLineItemViewModel
+{
+    public int Index { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public string Unit { get; set; } = string.Empty;
+    public decimal UnitPriceVnd { get; set; }
+    public decimal AmountVnd { get; set; }
 }

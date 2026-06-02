@@ -47,6 +47,9 @@
         <option value="Active" selected="@(Model.StatusFilter == "Active")">Đang hoạt động</option>
         <option value="Paused" selected="@(Model.StatusFilter == "Paused")">Tạm ngưng</option>
     </select>
+    <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")" data-filter-error>
+        @Model.FilterError
+    </div>
 </form>
 
 <div id="specialtyResults">
@@ -61,9 +64,28 @@
             if (!form || !target) return;
 
             let timer;
+            const error = form.querySelector('[data-filter-error]');
+
+            const setError = (message) => {
+                if (!error) return;
+                error.textContent = message || '';
+                error.classList.toggle('is-visible', Boolean(message));
+                form.querySelector('[name="search"]')?.classList.toggle('is-invalid', Boolean(message));
+            };
+
+            const validateFilters = () => {
+                const search = form.querySelector('[name="search"]')?.value?.trim() || '';
+                if (search.length > 100) return 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.';
+                return '';
+            };
+
             const submitRealtime = () => {
                 clearTimeout(timer);
                 timer = setTimeout(async () => {
+                    const validationMessage = validateFilters();
+                    setError(validationMessage);
+                    if (validationMessage) return;
+
                     const url = `${form.action}?${new URLSearchParams(new FormData(form)).toString()}`;
                     target.classList.add('is-loading');
                     const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });

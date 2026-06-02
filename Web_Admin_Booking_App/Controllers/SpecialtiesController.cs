@@ -19,8 +19,11 @@ public sealed class SpecialtiesController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? search, string? statusFilter, int page = 1, CancellationToken cancellationToken = default)
     {
-        var allSpecialties = await LoadSpecialtiesAsync(CancellationToken.None);
-        var filtered = ApplySpecialtyFilters(allSpecialties, search, statusFilter).ToList();
+        var allSpecialties = await LoadSpecialtiesAsync(cancellationToken);
+        var filterError = ValidateFilters(search, statusFilter);
+        var filtered = filterError == null
+            ? ApplySpecialtyFilters(allSpecialties, search, statusFilter).ToList()
+            : new List<SpecialtyListItemViewModel>();
         var pageSize = 8;
         var safePage = Math.Max(1, page);
         var totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)pageSize));
@@ -31,6 +34,7 @@ public sealed class SpecialtiesController : Controller
         {
             Search = search,
             StatusFilter = statusFilter,
+            FilterError = filterError,
             Page = safePage,
             PageSize = pageSize,
             TotalCount = filtered.Count,
@@ -309,16 +313,39 @@ public sealed class SpecialtiesController : Controller
     private async Task<List<SpecialtyListItemViewModel>> LoadSpecialtiesAsync(CancellationToken cancellationToken)
     {
         var result = new Dictionary<string, SpecialtyListItemViewModel>(StringComparer.OrdinalIgnoreCase);
+        var doctorCounts = await LoadDoctorCountsByDepartmentAsync(cancellationToken);
         foreach (var collectionName in new[] { "Departments", "departments" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents)
             {
                 var item = MapSpecialty(doc);
+                item.DoctorCount = doctorCounts.TryGetValue(item.Id, out var countById)
+                    ? countById
+                    : doctorCounts.TryGetValue(item.Code, out var countByCode) ? countByCode : 0;
                 result[item.Id] = item;
             }
         }
         return result.Values.OrderBy(x => x.Name).ToList();
+    }
+
+    private async Task<Dictionary<string, int>> LoadDoctorCountsByDepartmentAsync(CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var collectionName in new[] { "Doctors", "doctors" })
+        {
+            var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
+            foreach (var doc in snapshot.Documents)
+            {
+                var departmentId = GetString(doc, "departmentId", "DepartmentId", "specialtyId", "SpecialtyId", "departmentCode");
+                if (string.IsNullOrWhiteSpace(departmentId)) continue;
+                result[departmentId] = result.TryGetValue(departmentId, out var current) ? current + 1 : 1;
+            }
+
+            if (result.Count > 0) break;
+        }
+
+        return result;
     }
 
     private static SpecialtyListItemViewModel MapSpecialty(DocumentSnapshot doc)
@@ -432,6 +459,20 @@ public sealed class SpecialtiesController : Controller
         return query;
     }
 
+    private static string? ValidateFilters(string? search, string? statusFilter)
+    {
+        if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length > 100)
+        {
+            return "Từ khóa tìm kiếm không được vượt quá 100 ký tự.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && !Enum.TryParse<SpecialtyStatus>(statusFilter, true, out _))
+        {
+            return "Bộ lọc trạng thái chuyên khoa không hợp lệ.";
+        }
+
+        return null;
+    }
     private static string NormalizeText(string? value)
     {
         return (value ?? string.Empty).Trim().ToLowerInvariant();

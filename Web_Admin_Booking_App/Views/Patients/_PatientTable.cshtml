@@ -54,13 +54,13 @@
                         <div class="person-cell rich-person">
                             <div class="avatar avatar-lg">@item.AvatarText</div>
                             <div>
-                                <div class="fw-bold">@item.FullName</div>
+                                <div class="fw-bold @(item.FullName == "Chưa có tên" ? "text-secondary" : "")">@item.FullName</div>
                                 <div class="subtle-text">Mã: @item.Code</div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div class="fw-semibold">@item.Phone</div>
+                        <div class="fw-semibold @(item.Phone == "Chưa có số điện thoại" ? "text-secondary" : "")">@item.Phone</div>
                         <div class="subtle-text">@(string.IsNullOrWhiteSpace(item.Email) ? "Chưa có email" : item.Email)</div>
                     </td>
                     <td class="text-center">@GenderText(item.Gender)</td>
@@ -88,9 +88,9 @@
     <div class="table-footer">
         <span>Hiển thị @Model.Items.Count trên @Model.TotalCount bệnh nhân</span>
         <nav class="pager-actions">
-            <a class="btn btn-sm btn-light @(Model.Page <= 1 ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page - 1)">‹</a>
+            <a class="btn btn-sm btn-light @(Model.Page <= 1 ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-insuranceFilter="@Model.InsuranceFilter" asp-route-page="@(Model.Page - 1)">‹</a>
             <span class="pager-current">@Model.Page / @Model.TotalPages</span>
-            <a class="btn btn-sm btn-light @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page + 1)">›</a>
+            <a class="btn btn-sm btn-light @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-route-search="@Model.Search" asp-route-genderFilter="@Model.GenderFilter" asp-route-statusFilter="@Model.StatusFilter" asp-route-insuranceFilter="@Model.InsuranceFilter" asp-route-page="@(Model.Page + 1)">›</a>
         </nav>
     </div>
 </div>

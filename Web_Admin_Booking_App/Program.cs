@@ -29,6 +29,7 @@ builder.Services.AddSingleton<FirestoreDb>(sp =>
 
 // Đăng ký service Firebase Auth REST API
 builder.Services.AddHttpClient<FirebaseAuthRestService>();
+builder.Services.AddMemoryCache();
 
 // Đăng ký service xử lý admin user và dữ liệu Firestore
 builder.Services.AddScoped<FirebaseAdminUserService>();

@@ -1,5 +1,6 @@
 ﻿using Google.Cloud.Firestore;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using Web_Admin_Booking_App.Models;
 
 namespace Web_Admin_Booking_App.Services;
@@ -21,6 +22,7 @@ public sealed class FirestoreAdminDataService
     {
         var docs = await GetFirstAvailableCollectionAsync(_settings.UserCollections, cancellationToken);
         var result = new List<PatientListItemViewModel>();
+        var addedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var doc in docs.Documents)
         {
@@ -30,12 +32,41 @@ public sealed class FirestoreAdminDataService
             result.Add(new PatientListItemViewModel
             {
                 Id = doc.Id,
+                Code = GetString(doc, "userCode", "patientCode", "code") ?? doc.Id,
                 FullName = GetString(doc, "fullName", "FullName", "username", "Username") ?? "Chưa có tên",
                 Phone = GetString(doc, "phone", "phoneNumber", "Phone") ?? string.Empty,
                 Gender = ParseGender(GetString(doc, "gender", "Gender")),
                 Dob = ParseDateOnly(doc, "dateOfBirth", "dob", "Dob") ?? new DateOnly(2000, 1, 1),
-                Status = ParsePatientStatus(GetString(doc, "status", "Status"))
+                Status = ParsePatientStatus(GetString(doc, "status", "Status")),
+                HealthInsuranceNumber = GetString(doc, "healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT", "bhytCode", "maBHYT") ?? string.Empty,
+                HealthInsuranceStatus = NormalizeInsuranceStatus(GetString(doc, "status_bhyt", "healthInsuranceStatus", "insuranceStatus", "bhytStatus")),
+                CreatedAt = GetDateTime(doc, "createdAt", "CreatedAt")
             });
+            addedIds.Add(GetString(doc, "uid", "Uid") ?? doc.Id);
+        }
+
+        foreach (var collectionName in new[] { "patients", "Patients" })
+        {
+            var patientDocs = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
+            foreach (var doc in patientDocs.Documents)
+            {
+                var linkedId = GetString(doc, "uid", "Uid", "userId", "UserId", "patientId", "PatientId") ?? doc.Id;
+                if (!addedIds.Add(linkedId)) continue;
+
+                result.Add(new PatientListItemViewModel
+                {
+                    Id = doc.Id,
+                    Code = GetString(doc, "userCode", "patientCode", "code") ?? linkedId,
+                    FullName = GetString(doc, "fullName", "FullName", "patientName", "name", "username", "Username") ?? "Chưa có tên",
+                    Phone = GetString(doc, "phone", "phoneNumber", "Phone") ?? string.Empty,
+                    Gender = ParseGender(GetString(doc, "gender", "Gender")),
+                    Dob = ParseDateOnly(doc, "dateOfBirth", "dob", "Dob", "birthDate") ?? new DateOnly(2000, 1, 1),
+                    Status = ParsePatientStatus(GetString(doc, "status", "Status")),
+                    HealthInsuranceNumber = GetString(doc, "healthInsuranceNumber", "insuranceNumber", "bhyt", "BHYT", "bhytCode", "maBHYT") ?? string.Empty,
+                    HealthInsuranceStatus = NormalizeInsuranceStatus(GetString(doc, "status_bhyt", "healthInsuranceStatus", "insuranceStatus", "bhytStatus")),
+                    CreatedAt = GetDateTime(doc, "createdAt", "CreatedAt")
+                });
+            }
         }
 
         return result;
@@ -512,11 +543,127 @@ public sealed class FirestoreAdminDataService
         }, cancellationToken: CancellationToken.None);
     }
 
-    public async Task<PaymentsIndexViewModel> GetPaymentsAsync(CancellationToken cancellationToken = default)
+    public async Task<DashboardViewModel> GetDashboardAsync(string revenueRange = "this-week", CancellationToken cancellationToken = default)
     {
-        var paymentCollections = _settings.PaymentCollections
-            .Concat(_settings.InvoiceCollections)
-            .ToArray();
+        var patients = await GetPatientsAsync(cancellationToken);
+        var appointments = await GetAppointmentsAsync(cancellationToken);
+        var payments = await GetPaymentsAsync(cancellationToken: cancellationToken);
+        var doctors = await GetDoctorsAsync(cancellationToken);
+        var today = DateTime.Today;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+        var previousMonthStart = monthStart.AddMonths(-1);
+        var currentMonthPatients = patients.Count(x => x.CreatedAt.HasValue && x.CreatedAt.Value >= monthStart);
+        var previousMonthPatients = patients.Count(x => x.CreatedAt.HasValue && x.CreatedAt.Value >= previousMonthStart && x.CreatedAt.Value < monthStart);
+
+        return new DashboardViewModel
+        {
+            PatientCount = patients.Count,
+            PatientGrowthPercent = previousMonthPatients == 0
+                ? (currentMonthPatients > 0 ? 100 : 0)
+                : Math.Round((currentMonthPatients - previousMonthPatients) * 100m / previousMonthPatients, 1),
+            TodayAppointmentCount = appointments.Count(x => x.ScheduledAt.Date == today),
+            WaitingAppointmentCount = appointments.Count(x => x.ScheduledAt.Date == today && x.Status is AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Upcoming),
+            MonthlyRevenue = payments.Transactions.Where(x => x.Status == TransactionStatus.Paid && x.PaidAt >= monthStart).Sum(x => x.AmountVnd),
+            OnDutyDoctorCount = doctors.Count(x => string.Equals(x.UserStatus, "Đang hoạt động", StringComparison.OrdinalIgnoreCase) || x.IsActive == true),
+            TotalDoctorCount = doctors.Count,
+            ThisWeekRevenue = BuildWeeklyRevenue(payments.Transactions, StartOfWeek(today)),
+            LastWeekRevenue = BuildWeeklyRevenue(payments.Transactions, StartOfWeek(today).AddDays(-7)),
+            RecentAppointments = appointments
+                .OrderByDescending(x => x.ScheduledAt)
+                .Take(5)
+                .Select(x => new DashboardAppointmentViewModel
+                {
+                    Id = x.DocumentId,
+                    PatientName = x.PatientName,
+                    DoctorName = x.DoctorName,
+                    ScheduledAt = x.ScheduledAt,
+                    Status = x.Status
+                })
+                .ToList(),
+            Reminders = BuildDashboardReminders(patients, appointments, payments)
+        };
+    }
+
+    public async Task<AppointmentCreateViewModel> BuildAppointmentCreateModelAsync(AppointmentCreateViewModel? model = null, CancellationToken cancellationToken = default)
+    {
+        model ??= new AppointmentCreateViewModel();
+        var departments = await GetFirstAvailableCollectionAsync(_settings.DepartmentCollections, cancellationToken);
+        var doctors = await GetDoctorsAsync(cancellationToken);
+
+        model.Specialties = departments.Documents
+            .Select(x => new SelectOption
+            {
+                Value = x.Id,
+                Text = GetString(x, "name", "Name", "departmentName", "specialtyName") ?? x.Id
+            })
+            .OrderBy(x => x.Text)
+            .ToList();
+
+        model.Doctors = doctors
+            .Where(x => string.IsNullOrWhiteSpace(model.SpecialtyId) || string.Equals(x.DepartmentId, model.SpecialtyId, StringComparison.OrdinalIgnoreCase))
+            .Select(x => new SelectOption
+            {
+                Value = x.DocumentId,
+                Text = string.IsNullOrWhiteSpace(x.Department) ? x.FullName : $"{x.FullName} - {x.Department}"
+            })
+            .OrderBy(x => x.Text)
+            .ToList();
+
+        return model;
+    }
+
+    public async Task<IReadOnlyList<SelectOption>> GetDoctorOptionsByDepartmentAsync(string departmentId, CancellationToken cancellationToken = default)
+    {
+        var doctors = await GetDoctorsAsync(cancellationToken);
+        return doctors
+            .Where(x => string.IsNullOrWhiteSpace(departmentId) || string.Equals(x.DepartmentId, departmentId, StringComparison.OrdinalIgnoreCase))
+            .Select(x => new SelectOption { Value = x.DocumentId, Text = x.FullName })
+            .OrderBy(x => x.Text)
+            .ToList();
+    }
+
+    public async Task CreateAppointmentAsync(AppointmentCreateViewModel model, CancellationToken cancellationToken = default)
+    {
+        var doctors = await GetDoctorsAsync(cancellationToken);
+        var departments = await LoadDepartmentNamesAsync(cancellationToken);
+        var doctor = doctors.FirstOrDefault(x => string.Equals(x.DocumentId, model.DoctorId, StringComparison.OrdinalIgnoreCase));
+        var scheduledAt = model.Date.ToDateTime(model.Time);
+        var collectionName = _settings.AppointmentCollections.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "Appointments";
+        var payload = new Dictionary<string, object?>
+        {
+            ["patientName"] = model.PatientName.Trim(),
+            ["patientPhone"] = model.PatientPhone?.Trim(),
+            ["doctorId"] = model.DoctorId,
+            ["doctorName"] = doctor?.FullName ?? model.DoctorId,
+            ["departmentId"] = model.SpecialtyId,
+            ["departmentName"] = departments.TryGetValue(model.SpecialtyId, out var departmentName) ? departmentName : model.SpecialtyId,
+            ["scheduledAt"] = Timestamp.FromDateTime(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)),
+            ["appointmentDate"] = Timestamp.FromDateTime(DateTime.SpecifyKind(model.Date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc)),
+            ["appointmentTime"] = model.Time.ToString("HH:mm"),
+            ["status"] = "pending",
+            ["note"] = model.Note?.Trim(),
+            ["createdAt"] = Timestamp.GetCurrentTimestamp(),
+            ["updatedAt"] = Timestamp.GetCurrentTimestamp()
+        };
+
+        await _firestore.Collection(collectionName).AddAsync(payload, cancellationToken);
+    }
+
+    public async Task<PaymentsIndexViewModel> GetPaymentsAsync(
+        string? search = null,
+        string? sourceFilter = null,
+        string? statusFilter = null,
+        string? methodFilter = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var paymentCollections = sourceFilter?.Trim().ToLowerInvariant() switch
+        {
+            "payments" => _settings.PaymentCollections,
+            "invoices" => _settings.InvoiceCollections,
+            _ => _settings.PaymentCollections.Concat(_settings.InvoiceCollections).ToArray()
+        };
         var docs = await GetFirstAvailableCollectionAsync(paymentCollections, cancellationToken);
         var transactions = new List<TransactionListItemViewModel>();
 
@@ -529,6 +676,7 @@ public sealed class FirestoreAdminDataService
             transactions.Add(new TransactionListItemViewModel
             {
                 Id = doc.Id,
+                SourceCollection = doc.Reference.Parent.Id,
                 InvoiceCode = GetString(doc, "invoiceCode", "code", "id") ?? doc.Id,
                 PatientName = GetString(doc, "patientName", "PatientName") ?? string.Empty,
                 ServiceName = GetString(doc, "serviceName", "description") ?? "Dịch vụ khám",
@@ -539,15 +687,212 @@ public sealed class FirestoreAdminDataService
             });
         }
 
+        var filtered = transactions.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var key = search.Trim().ToLowerInvariant();
+            filtered = filtered.Where(x =>
+                x.InvoiceCode.ToLowerInvariant().Contains(key) ||
+                x.PatientName.ToLowerInvariant().Contains(key) ||
+                x.ServiceName.ToLowerInvariant().Contains(key) ||
+                x.Id.ToLowerInvariant().Contains(key));
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<TransactionStatus>(statusFilter, true, out var parsedStatus))
+        {
+            filtered = filtered.Where(x => x.Status == parsedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(methodFilter) && Enum.TryParse<PaymentMethod>(methodFilter, true, out var parsedMethod))
+        {
+            filtered = filtered.Where(x => x.Method == parsedMethod);
+        }
+
+        if (fromDate.HasValue)
+        {
+            filtered = filtered.Where(x => x.PaidAt.Date >= fromDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
+        if (toDate.HasValue)
+        {
+            filtered = filtered.Where(x => x.PaidAt.Date <= toDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
         return new PaymentsIndexViewModel
         {
+            Search = search,
+            SourceFilter = sourceFilter,
+            StatusFilter = statusFilter,
+            MethodFilter = methodFilter,
+            FromDate = fromDate,
+            ToDate = toDate,
             TotalRevenue = transactions.Where(x => x.Status == TransactionStatus.Paid).Sum(x => x.AmountVnd),
             TotalRevenueChangePercent = 0,
             SuccessfulToday = transactions.Count(x => x.Status == TransactionStatus.Paid && x.PaidAt.Date == DateTime.Today),
             PendingCount = transactions.Count(x => x.Status == TransactionStatus.Pending),
             PendingNeedsApprovalCount = transactions.Count(x => x.Status == TransactionStatus.Pending),
             PeriodLabel = "Dữ liệu từ Firebase",
-            Transactions = transactions
+            Transactions = filtered
+                .OrderByDescending(x => x.PaidAt)
+                .ThenByDescending(x => x.InvoiceCode)
+                .ToList()
+        };
+    }
+
+    public async Task<PaymentReceiptViewModel?> GetPaymentReceiptAsync(
+        string id,
+        string? sourceCollection = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var doc = await FindPaymentDocumentAsync(id.Trim(), sourceCollection, cancellationToken);
+        if (doc is null || !doc.Exists)
+        {
+            return null;
+        }
+
+        var total = GetDecimal(doc, "amount", "totalAmount", "AmountVnd", "total", "grandTotal");
+        var discount = GetDecimal(doc, "discount", "discountAmount", "discountVnd", "discountValue");
+        var due = GetDecimal(doc, "amountDue", "payableAmount", "finalAmount", "paidAmount");
+        if (due <= 0)
+        {
+            due = Math.Max(0, total - discount);
+        }
+
+        var items = GetReceiptItems(doc, total);
+        if (total <= 0)
+        {
+            total = items.Sum(x => x.AmountVnd);
+            due = Math.Max(0, total - discount);
+        }
+
+        return new PaymentReceiptViewModel
+        {
+            Id = doc.Id,
+            SourceCollection = doc.Reference.Parent.Id,
+            InvoiceCode = GetString(doc, "invoiceCode", "code", "id", "receiptCode") ?? doc.Id,
+            PatientName = GetString(doc, "patientName", "PatientName", "customerName", "clientName") ?? "Benh nhan",
+            PatientDob = GetDateTime(doc, "patientDob", "dateOfBirth", "dob", "birthDate"),
+            PatientGender = GetString(doc, "gender", "patientGender", "Gender") ?? string.Empty,
+            PatientAddress = GetString(doc, "address", "patientAddress", "Address") ?? string.Empty,
+            DoctorName = GetString(doc, "doctorName", "DoctorName", "physicianName") ?? string.Empty,
+            PaidAt = GetDateTime(doc, "paidAt", "paymentDate", "createdAt", "CreatedAt") ?? DateTime.Now,
+            Method = ParsePaymentMethod(GetString(doc, "method", "paymentMethod")),
+            Status = ParseTransactionStatus(GetString(doc, "status", "Status")),
+            TotalAmountVnd = total,
+            DiscountVnd = discount,
+            AmountDueVnd = due,
+            AmountInWords = ToVietnameseMoneyWords(due),
+            Items = items
+        };
+    }
+
+    private async Task<DocumentSnapshot?> FindPaymentDocumentAsync(
+        string id,
+        string? sourceCollection,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(sourceCollection))
+        {
+            var directDoc = await _firestore.Collection(sourceCollection.Trim()).Document(id).GetSnapshotAsync(cancellationToken);
+            if (directDoc.Exists)
+            {
+                return directDoc;
+            }
+        }
+
+        var collections = _settings.PaymentCollections
+            .Concat(_settings.InvoiceCollections)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var collectionName in collections)
+        {
+            var snapshot = await _firestore.Collection(collectionName).Document(id).GetSnapshotAsync(cancellationToken);
+            if (snapshot.Exists)
+            {
+                return snapshot;
+            }
+        }
+
+        return null;
+    }
+
+    public async Task<MedicalRecordsIndexViewModel> GetMedicalRecordsAsync(
+        string? search,
+        string? statusFilter,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var records = new List<MedicalRecordListItemViewModel>();
+        foreach (var collectionName in new[] { "MedicalRecords", "medicalRecords", "medical_records" })
+        {
+            var snapshot = await _firestore.Collection(collectionName).Limit(500).GetSnapshotAsync(cancellationToken);
+            foreach (var doc in snapshot.Documents)
+            {
+                records.Add(new MedicalRecordListItemViewModel
+                {
+                    Id = doc.Id,
+                    RecordCode = GetString(doc, "recordCode", "code", "medicalRecordCode") ?? $"BA-{doc.Id}",
+                    PatientId = GetString(doc, "patientId", "PatientId", "userId", "UserId") ?? string.Empty,
+                    PatientName = GetString(doc, "patientName", "PatientName") ?? "Chưa có tên",
+                    DoctorName = GetString(doc, "doctorName", "DoctorName") ?? "Chưa phân bác sĩ",
+                    SpecialtyName = GetString(doc, "specialtyName", "departmentName", "department") ?? "Chưa cập nhật",
+                    CreatedAt = GetDateTime(doc, "createdAt", "CreatedAt") ?? DateTime.MinValue,
+                    Status = ParseMedicalRecordStatus(GetString(doc, "status", "Status"))
+                });
+            }
+            if (records.Count > 0) break;
+        }
+
+        var query = records.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var key = search.Trim().ToLowerInvariant();
+            query = query.Where(x =>
+                x.RecordCode.ToLowerInvariant().Contains(key) ||
+                x.PatientId.ToLowerInvariant().Contains(key) ||
+                x.PatientName.ToLowerInvariant().Contains(key) ||
+                x.DoctorName.ToLowerInvariant().Contains(key));
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<MedicalRecordStatus>(statusFilter, true, out var parsedStatus))
+        {
+            query = query.Where(x => x.Status == parsedStatus);
+        }
+
+        if (fromDate.HasValue)
+        {
+            query = query.Where(x => x.CreatedAt.Date >= fromDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(x => x.CreatedAt.Date <= toDate.Value.ToDateTime(TimeOnly.MinValue));
+        }
+
+        var filtered = query.OrderByDescending(x => x.CreatedAt).ToList();
+        var safePageSize = Math.Clamp(pageSize, 5, 50);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)safePageSize));
+        var safePage = Math.Min(Math.Max(1, page), totalPages);
+
+        return new MedicalRecordsIndexViewModel
+        {
+            Search = search,
+            StatusFilter = statusFilter,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = safePage,
+            PageSize = safePageSize,
+            TotalCount = filtered.Count,
+            Items = filtered.Skip((safePage - 1) * safePageSize).Take(safePageSize).ToList()
         };
     }
 
@@ -1273,6 +1618,130 @@ public sealed class FirestoreAdminDataService
         }
     }
 
+    private static IReadOnlyList<PaymentReceiptLineItemViewModel> GetReceiptItems(DocumentSnapshot doc, decimal fallbackAmount)
+    {
+        foreach (var fieldName in new[] { "items", "lineItems", "services", "details" })
+        {
+            if (!doc.ContainsField(fieldName)) continue;
+
+            try
+            {
+                var value = doc.GetValue<object?>(fieldName);
+                var rows = value switch
+                {
+                    IEnumerable<object> list => list.Select((item, index) => MapReceiptItem(item, index + 1)).Where(x => x != null).Cast<PaymentReceiptLineItemViewModel>().ToList(),
+                    _ => new List<PaymentReceiptLineItemViewModel>()
+                };
+
+                if (rows.Count > 0)
+                {
+                    return rows;
+                }
+            }
+            catch
+            {
+                return Array.Empty<PaymentReceiptLineItemViewModel>();
+            }
+        }
+
+        var description = GetString(doc, "serviceName", "description", "service", "serviceTitle") ?? "Dịch vụ khám, chữa bệnh";
+        return new[]
+        {
+            new PaymentReceiptLineItemViewModel
+            {
+                Index = 1,
+                Description = description,
+                Quantity = 1,
+                Unit = "Lần",
+                UnitPriceVnd = fallbackAmount,
+                AmountVnd = fallbackAmount
+            }
+        };
+    }
+
+    private static PaymentReceiptLineItemViewModel? MapReceiptItem(object item, int index)
+    {
+        if (item is not IDictionary<string, object> data)
+        {
+            return null;
+        }
+
+        var quantity = GetMapDecimal(data, "quantity", "qty", "count");
+        if (quantity <= 0)
+        {
+            quantity = 1;
+        }
+
+        var amount = GetMapDecimal(data, "amount", "totalAmount", "lineTotal", "price");
+        var unitPrice = GetMapDecimal(data, "unitPrice", "price", "fee");
+        if (unitPrice <= 0 && amount > 0)
+        {
+            unitPrice = amount / quantity;
+        }
+
+        if (amount <= 0)
+        {
+            amount = unitPrice * quantity;
+        }
+
+        return new PaymentReceiptLineItemViewModel
+        {
+            Index = index,
+            Description = GetMapString(data, "description", "serviceName", "name", "title") ?? "Dịch vụ khám, chữa bệnh",
+            Quantity = quantity,
+            Unit = GetMapString(data, "unit", "dvt", "unitName") ?? "Lần",
+            UnitPriceVnd = unitPrice,
+            AmountVnd = amount
+        };
+    }
+
+    private static string? GetMapString(IDictionary<string, object> data, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (data.TryGetValue(key, out var value) && value is not null)
+            {
+                return Convert.ToString(value, CultureInfo.InvariantCulture);
+            }
+        }
+
+        return null;
+    }
+
+    private static decimal GetMapDecimal(IDictionary<string, object> data, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (!data.TryGetValue(key, out var value) || value is null) continue;
+            try
+            {
+                return value switch
+                {
+                    decimal d => d,
+                    double d => Convert.ToDecimal(d),
+                    float f => Convert.ToDecimal(f),
+                    long l => l,
+                    int i => i,
+                    string s when decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed) => parsed,
+                    string s when decimal.TryParse(s, NumberStyles.Any, CultureInfo.GetCultureInfo("vi-VN"), out var parsed) => parsed,
+                    _ => 0
+                };
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        return 0;
+    }
+
+    private static string ToVietnameseMoneyWords(decimal amount)
+    {
+        var rounded = Math.Max(0, decimal.Round(amount, 0));
+        return string.Format(CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đồng", rounded);
+    }
+
     private async Task<QuerySnapshot> GetFirstAvailableCollectionAsync(string[] collectionNames, CancellationToken cancellationToken)
     {
         foreach (var collectionName in collectionNames.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal))
@@ -1286,6 +1755,105 @@ public sealed class FirestoreAdminDataService
 
         var fallbackCollection = collectionNames.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "_missing_collection";
         return await _firestore.Collection(fallbackCollection).GetSnapshotAsync(cancellationToken);
+    }
+
+    private static DateTime StartOfWeek(DateTime date)
+    {
+        var offset = ((int)date.DayOfWeek + 6) % 7;
+        return date.Date.AddDays(-offset);
+    }
+
+    private static IReadOnlyList<DashboardRevenuePointViewModel> BuildWeeklyRevenue(
+        IEnumerable<TransactionListItemViewModel> transactions,
+        DateTime weekStart)
+    {
+        var labels = new[] { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
+        return Enumerable.Range(0, 7)
+            .Select(i =>
+            {
+                var date = weekStart.AddDays(i).Date;
+                return new DashboardRevenuePointViewModel
+                {
+                    Label = labels[i],
+                    Amount = transactions
+                        .Where(x => x.Status == TransactionStatus.Paid && x.PaidAt.Date == date)
+                        .Sum(x => x.AmountVnd)
+                };
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyList<DashboardReminderViewModel> BuildDashboardReminders(
+        IReadOnlyList<PatientListItemViewModel> patients,
+        IReadOnlyList<AppointmentListItemViewModel> appointments,
+        PaymentsIndexViewModel payments)
+    {
+        var result = new List<DashboardReminderViewModel>();
+        var pendingInsurance = patients.Count(x => string.Equals(x.HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase));
+        if (pendingInsurance > 0)
+        {
+            result.Add(new DashboardReminderViewModel
+            {
+                Title = "Duyệt hồ sơ BHYT",
+                Description = $"{pendingInsurance} hồ sơ đang chờ xét duyệt",
+                Tone = "warning"
+            });
+        }
+
+        if (payments.PendingCount > 0)
+        {
+            result.Add(new DashboardReminderViewModel
+            {
+                Title = "Xử lý thanh toán",
+                Description = $"{payments.PendingCount} giao dịch đang chờ xử lý",
+                Tone = "danger"
+            });
+        }
+
+        var waitingToday = appointments.Count(x => x.ScheduledAt.Date == DateTime.Today && x.Status == AppointmentStatus.Pending);
+        if (waitingToday > 0)
+        {
+            result.Add(new DashboardReminderViewModel
+            {
+                Title = "Xác nhận lịch hẹn hôm nay",
+                Description = $"{waitingToday} ca chưa xác nhận",
+                Tone = "primary"
+            });
+        }
+
+        if (result.Count == 0)
+        {
+            result.Add(new DashboardReminderViewModel
+            {
+                Title = "Không có việc cần xử lý",
+                Description = "Các luồng chính đang ổn định",
+                Tone = "secondary"
+            });
+        }
+
+        return result;
+    }
+
+    private static MedicalRecordStatus ParseMedicalRecordStatus(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "approved" or "done" or "completed" => MedicalRecordStatus.Approved,
+            "cancelled" or "canceled" or "rejected" => MedicalRecordStatus.Cancelled,
+            _ => MedicalRecordStatus.Pending
+        };
+    }
+
+    private static string NormalizeInsuranceStatus(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "approved" or "da_duyet" or "đã duyệt" => "approved",
+            "pending" or "cho_duyet" or "chờ duyệt" => "pending",
+            "rejected" or "tu_choi" or "từ chối" => "rejected",
+            "none" or "missing" => "none",
+            _ => string.Empty
+        };
     }
 
     private async Task<DocumentSnapshot?> GetFirstExistingDocumentAsync(

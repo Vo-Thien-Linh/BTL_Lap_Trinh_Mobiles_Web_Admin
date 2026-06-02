@@ -1,46 +1,28 @@
-﻿@{
+@model Web_Admin_Booking_App.Models.DashboardViewModel
+@{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Tổng quan Hệ thống";
+    ViewData["Title"] = "Tổng quan hệ thống";
+    var thisWeek = System.Text.Json.JsonSerializer.Serialize(Model.ThisWeekRevenue.Select(x => x.Amount));
+    var lastWeek = System.Text.Json.JsonSerializer.Serialize(Model.LastWeekRevenue.Select(x => x.Amount));
 }
 
 <div class="dashboard-grid">
+    <section class="admin-hero-card">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <div class="eyebrow">Dữ liệu vận hành</div>
+                <h1 class="admin-page-title">Tổng quan hệ thống</h1>
+                <p class="admin-page-subtitle">Theo dõi lịch hẹn, bệnh nhân, bác sĩ và doanh thu.</p>
+            </div>
+            <span class="admin-badge admin-badge--success">Dữ liệu vận hành</span>
+        </div>
+    </section>
+
     <div class="row g-3">
-        <div class="col-md-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <div class="stat-card__label">Tổng số bệnh nhân</div>
-                    <div class="stat-card__value">1,284</div>
-                    <div class="stat-card__hint text-primary">↗ +12% tháng này</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <div class="stat-card__label">Lịch hẹn hôm nay</div>
-                    <div class="stat-card__value">42</div>
-                    <div class="stat-card__hint text-warning">8 ca đang chờ</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <div class="stat-card__label">Doanh thu tháng</div>
-                    <div class="stat-card__value">428.5M</div>
-                    <div class="stat-card__hint text-secondary">VND</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <div class="stat-card__label">Bác sĩ đang trực</div>
-                    <div class="stat-card__value">18/24</div>
-                    <div class="stat-card__hint text-secondary">Cập nhật theo ca</div>
-                </div>
-            </div>
-        </div>
+        <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Tổng số bệnh nhân</div><div class="stat-card__value">@Model.PatientCount</div><div class="stat-card__hint text-primary">@Model.PatientGrowthPercent.ToString("0.#")% tháng này</div></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Lịch hẹn hôm nay</div><div class="stat-card__value">@Model.TodayAppointmentCount</div><div class="stat-card__hint text-warning">@Model.WaitingAppointmentCount ca đang chờ</div></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Doanh thu tháng</div><div class="stat-card__value">@Vnd(Model.MonthlyRevenue)</div><div class="stat-card__hint text-secondary">VND</div></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Bác sĩ đang trực</div><div class="stat-card__value">@Model.OnDutyDoctorCount/@Model.TotalDoctorCount</div><div class="stat-card__hint text-secondary">Cập nhật theo ca</div></div></div></div>
     </div>
 
     <div class="row g-3">
@@ -50,31 +32,17 @@
                     <div class="panel-card__header mb-2">
                         <div>
                             <div class="fw-bold">Thống kê doanh thu theo tuần</div>
-                            <div class="text-secondary small">Cập nhật lúc 08:00 AM, Hôm nay</div>
+                            <div class="text-secondary small">Dữ liệu từ Firestore</div>
                         </div>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Chọn tuần">
-                            <button type="button" class="btn btn-outline-secondary active">Tuần này</button>
-                            <button type="button" class="btn btn-outline-secondary">Tuần trước</button>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" data-chart-range="this">Tuần này</button>
+                            <button type="button" class="btn btn-outline-secondary" data-chart-range="last">Tuần trước</button>
                         </div>
                     </div>
-
                     <div class="chart-wrap p-2">
                         <svg viewBox="0 0 700 260" width="100%" height="100%" role="img" aria-label="Biểu đồ doanh thu">
-                            <rect x="0" y="0" width="700" height="260" fill="transparent" />
-
+                            <polyline id="revenueLine" points="" fill="none" stroke="var(--bs-primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
                             <line x1="30" y1="220" x2="680" y2="220" stroke="rgba(0,0,0,0.15)" />
-                            <line x1="30" y1="40" x2="30" y2="220" stroke="rgba(0,0,0,0.15)" />
-
-                            <path d="M30 190 C 110 150, 160 170, 220 160 C 290 150, 320 90, 380 110 C 450 130, 500 70, 560 80 C 620 90, 650 140, 680 60"
-                                  fill="none"
-                                  stroke="var(--bs-primary)"
-                                  stroke-width="3"
-                                  stroke-linecap="round" />
-
-                            <circle cx="220" cy="160" r="4" fill="var(--bs-primary)" />
-                            <circle cx="380" cy="110" r="4" fill="var(--bs-primary)" />
-                            <circle cx="560" cy="80" r="4" fill="var(--bs-primary)" />
-
                             <g font-size="12" fill="rgba(0,0,0,0.55)">
                                 <text x="70" y="245">T2</text>
                                 <text x="160" y="245">T3</text>
@@ -91,68 +59,28 @@
 
             <div class="card panel-card mt-3">
                 <div class="card-body">
-                    <div class="panel-card__header">
-                        <div class="fw-bold">Lịch hẹn gần nhất</div>
-                        <a class="text-decoration-none" href="#">Xem tất cả</a>
-                    </div>
-
+                    <div class="panel-card__header"><div class="fw-bold">Lịch hẹn gần nhất</div><a asp-controller="Appointments" asp-action="Index" class="text-decoration-none">Xem tất cả</a></div>
                     <div class="table-responsive mt-2">
                         <table class="table table-sm appointment-table mb-0">
-                            <thead>
-                                <tr class="text-secondary">
-                                    <th style="min-width: 220px;">Tên bệnh nhân</th>
-                                    <th>Bác sĩ</th>
-                                    <th>Giờ hẹn</th>
-                                    <th>Trạng thái</th>
-                                    <th class="text-end">Hành động</th>
-                                </tr>
-                            </thead>
+                            <thead><tr class="text-secondary"><th>Tên bệnh nhân</th><th>Bác sĩ</th><th>Giờ hẹn</th><th>Trạng thái</th><th class="text-end">Hành động</th></tr></thead>
                             <tbody>
-                                <tr>
-                                    <td>
-                                        <div class="person-cell">
-                                            <div class="avatar">NA</div>
-                                            <div>
-                                                <div class="fw-semibold">Nguyễn Văn An</div>
-                                                <div class="text-secondary small">Long</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-secondary">BS. Trần Đức</td>
-                                    <td>09:30 AM</td>
-                                    <td><span class="badge text-bg-primary">Sắp đến</span></td>
-                                    <td class="text-end"><button class="btn btn-sm btn-light" type="button">⋯</button></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="person-cell">
-                                            <div class="avatar">PB</div>
-                                            <div>
-                                                <div class="fw-semibold">Phạm Thị Bích</div>
-                                                <div class="text-secondary small"> </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-secondary">BS. Lê Minh</td>
-                                    <td>10:15 AM</td>
-                                    <td><span class="badge text-bg-warning">Đang khám</span></td>
-                                    <td class="text-end"><button class="btn btn-sm btn-light" type="button">⋯</button></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="person-cell">
-                                            <div class="avatar">TN</div>
-                                            <div>
-                                                <div class="fw-semibold">Trần Hoàng Nam</div>
-                                                <div class="text-secondary small"> </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-secondary">BS. Ngô Bảo</td>
-                                    <td>11:00 AM</td>
-                                    <td><span class="badge text-bg-secondary">Đã khám</span></td>
-                                    <td class="text-end"><button class="btn btn-sm btn-light" type="button">⋯</button></td>
-                                </tr>
+                            @if (Model.RecentAppointments.Count == 0)
+                            {
+                                <tr><td colspan="5" class="empty-state">Chưa có lịch hẹn.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.RecentAppointments)
+                                {
+                                    <tr>
+                                        <td>@item.PatientName</td>
+                                        <td>@item.DoctorName</td>
+                                        <td>@item.ScheduledAt.ToString("HH:mm")</td>
+                                        <td><span class="badge text-bg-primary">@AppointmentStatusText(item.Status)</span></td>
+                                        <td class="text-end"><a class="btn btn-sm btn-light" asp-controller="Appointments" asp-action="Index" asp-route-selectedId="@item.Id">Xem</a></td>
+                                    </tr>
+                                }
+                            }
                             </tbody>
                         </table>
                     </div>
@@ -163,47 +91,12 @@
         <div class="col-xl-4">
             <div class="card panel-card">
                 <div class="card-body">
-                    <div class="panel-card__header">
-                        <div class="fw-bold">Nhắc nhở quan trọng</div>
-                        <span class="text-secondary small"> </span>
-                    </div>
-
+                    <div class="panel-card__header"><div class="fw-bold">Nhắc nhở quan trọng</div></div>
                     <div class="d-grid gap-2 mt-3">
-                        <div class="alert alert-warning reminder" role="note">
-                            <div class="reminder__title">Duyệt danh mục thuốc mới</div>
-                            <div class="reminder__desc">Hạn cuối: 17:00 chiều nay</div>
-                        </div>
-                        <div class="alert alert-primary reminder" role="note">
-                            <div class="reminder__title">Họp Hội đồng Y khoa</div>
-                            <div class="reminder__desc">Phòng họp 302 - Ngày mai 09:00 AM</div>
-                        </div>
-                        <div class="alert alert-secondary reminder" role="note">
-                            <div class="reminder__title">Bảo trì hệ thống máy chủ</div>
-                            <div class="reminder__desc">Lên lịch: 23:00 Thứ 7 tuần này</div>
-                        </div>
-                        <div class="alert alert-danger reminder" role="note">
-                            <div class="reminder__title">Xử lý phản hồi bệnh nhân</div>
-                            <div class="reminder__desc">Có 5 khiếu nại mới chờ xử lý</div>
-                        </div>
-
-                        <button type="button" class="btn btn-outline-primary w-100" style="border-style: dashed;">+ Thêm lời nhắc mới</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card panel-card mt-3">
-                <div class="card-body">
-                    <div class="fw-bold mb-2">Sắp diễn ra</div>
-
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="border rounded-3 p-2 text-center" style="min-width: 62px;">
-                            <div class="text-secondary small">NOV</div>
-                            <div class="fw-bold fs-4">15</div>
-                        </div>
-                        <div>
-                            <div class="fw-semibold">Kiểm định thiết bị</div>
-                            <div class="text-secondary">Khoa Chẩn đoán hình ảnh</div>
-                        </div>
+                        @foreach (var item in Model.Reminders)
+                        {
+                            <div class="alert alert-@item.Tone reminder" role="note"><div class="reminder__title">@item.Title</div><div class="reminder__desc">@item.Description</div></div>
+                        }
                     </div>
                 </div>
             </div>
@@ -211,4 +104,35 @@
     </div>
 </div>
 
-<a class="btn btn-primary fab-add" href="#" aria-label="Thêm mới">+</a>
+@section Scripts {
+<script>
+(() => {
+    const data = { this: @Html.Raw(thisWeek), last: @Html.Raw(lastWeek) };
+    const line = document.getElementById('revenueLine');
+    const draw = (range) => {
+        const values = data[range] || [];
+        const max = Math.max(...values, 1);
+        const points = values.map((v, i) => `${50 + i * 100},${220 - (v / max) * 170}`).join(' ');
+        line.setAttribute('points', points);
+        document.querySelectorAll('[data-chart-range]').forEach(btn => btn.classList.toggle('active', btn.dataset.chartRange === range));
+    };
+    document.querySelectorAll('[data-chart-range]').forEach(btn => btn.addEventListener('click', () => draw(btn.dataset.chartRange)));
+    draw('this');
+})();
+</script>
+}
+
+@functions {
+    private static string Vnd(decimal amount) => string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", amount);
+
+    private static string AppointmentStatusText(Web_Admin_Booking_App.Models.AppointmentStatus status) => status switch
+    {
+        Web_Admin_Booking_App.Models.AppointmentStatus.Pending => "Chờ xác nhận",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Confirmed => "Đã xác nhận",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Upcoming => "Sắp tới",
+        Web_Admin_Booking_App.Models.AppointmentStatus.InProgress => "Đang khám",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Completed => "Hoàn thành",
+        Web_Admin_Booking_App.Models.AppointmentStatus.Cancelled => "Đã hủy",
+        _ => "-"
+    };
+}

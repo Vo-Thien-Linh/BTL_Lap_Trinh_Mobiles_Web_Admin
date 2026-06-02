@@ -48,6 +48,21 @@ public class AppointmentListItemViewModel
     public AppointmentStatus Status { get; set; }
 }
 
+public class AppointmentIndexViewModel
+{
+    public string? Search { get; set; }
+    public string? StatusFilter { get; set; }
+    public DateOnly? FromDate { get; set; }
+    public DateOnly? ToDate { get; set; }
+    public string? SelectedId { get; set; }
+    public string? FilterError { get; set; }
+    public int TotalCount { get; set; }
+    public int TodayCount { get; set; }
+    public int PendingCount { get; set; }
+    public int ActiveCount { get; set; }
+    public IReadOnlyList<AppointmentListItemViewModel> Items { get; set; } = Array.Empty<AppointmentListItemViewModel>();
+}
+
 public class SelectOption
 {
     public string Value { get; set; } = string.Empty;
@@ -60,17 +75,18 @@ public class AppointmentCreateViewModel
     [Display(Name = "Tên bệnh nhân")]
     public string PatientName { get; set; } = string.Empty;
 
-    [RegularExpression(@"^\d{10}$", ErrorMessage = "Số điện thoại phải gồm đúng 10 chữ số.")]
     [Display(Name = "Số điện thoại")]
+    [Required]
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại phải gồm 10 số và bắt đầu bằng 0.")]
     public string? PatientPhone { get; set; }
 
     [Required(ErrorMessage = "Vui lòng chọn bác sĩ.")]
     [Display(Name = "Bác sĩ")]
-    public string DoctorName { get; set; } = string.Empty;
+    public string DoctorId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Vui lòng chọn chuyên khoa.")]
     [Display(Name = "Chuyên khoa")]
-    public string SpecialtyName { get; set; } = string.Empty;
+    public string SpecialtyId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Vui lòng chọn ngày khám.")]
     [Display(Name = "Ngày khám")]

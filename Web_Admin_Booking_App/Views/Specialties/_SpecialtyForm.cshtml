@@ -43,6 +43,24 @@
             </div>
 
             <div class="col-lg-6">
+                <label asp-for="HeadDoctor" class="form-label"></label>
+                <input asp-for="HeadDoctor" class="form-control" placeholder="VD: BS. Nguyễn Văn A" list="doctorSuggestions" autocomplete="off" />
+                <datalist id="doctorSuggestions">
+                    @foreach (var doctor in Model.DoctorSuggestions)
+                    {
+                        <option value="@doctor"></option>
+                    }
+                </datalist>
+                <span asp-validation-for="HeadDoctor" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="DoctorCount" class="form-label"></label>
+                <input asp-for="DoctorCount" class="form-control" min="0" placeholder="VD: 8" />
+                <span asp-validation-for="DoctorCount" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
                 <label asp-for="Status" class="form-label"></label>
                 <select asp-for="Status" class="form-select">
                     <option value="Active">Đang hoạt động</option>
@@ -61,6 +79,12 @@
                     }
                 </datalist>
                 <span asp-validation-for="LocationNote" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <label asp-for="Icon" class="form-label"></label>
+                <select asp-for="Icon" class="form-select" asp-items="Html.GetEnumSelectList<SpecialtyIcon>()"></select>
+                <span asp-validation-for="Icon" class="text-danger"></span>
             </div>
 
             <div class="col-lg-6">

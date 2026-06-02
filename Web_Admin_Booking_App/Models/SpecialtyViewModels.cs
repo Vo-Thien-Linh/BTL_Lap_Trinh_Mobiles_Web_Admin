@@ -25,6 +25,7 @@ public sealed class SpecialtyIndexViewModel
 {
     public string? Search { get; set; }
     public string? StatusFilter { get; set; }
+    public string? FilterError { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 8;
     public int TotalCount { get; set; }
