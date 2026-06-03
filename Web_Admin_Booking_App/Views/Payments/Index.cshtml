@@ -1,13 +1,13 @@
-@model Web_Admin_Booking_App.Models.PaymentsIndexViewModel
+﻿@model Web_Admin_Booking_App.Models.PaymentsIndexViewModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Quản lý thanh toán";
+    ViewData["Title"] = "Quáº£n lÃ½ thanh toÃ¡n";
 }
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
     <div>
-        <div class="fw-bold fs-5">Quản lý thanh toán</div>
-        <div class="text-secondary">Theo dõi và quản lý giao dịch tài chính của bệnh viện</div>
+        <div class="fw-bold fs-5">Quáº£n lÃ½ thanh toÃ¡n</div>
+        <div class="text-secondary">Theo dÃµi vÃ  quáº£n lÃ½ giao dá»‹ch tÃ i chÃ­nh cá»§a bá»‡nh viá»‡n</div>
     </div>
     <div class="d-flex gap-2">
         <a id="exportInvoicePdf"
@@ -16,44 +16,44 @@
            target="_blank"
            rel="noopener"
            data-receipt-base-url="@Url.Action("ReceiptPdf", "Payments")">
-            Xuất hóa đơn PDF
+            Xuáº¥t hÃ³a Ä‘Æ¡n PDF
         </a>
     </div>
 </div>
 
 <div class="row g-3 mb-3">
     <div class="col-md-6 col-lg-4">
-        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Tổng doanh thu</div><div class="stat-card__value">@Vnd(Model.TotalRevenue)</div><div class="stat-card__hint text-danger">+@Model.TotalRevenueChangePercent.ToString("0.#")%</div></div></div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Tá»•ng doanh thu</div><div class="stat-card__value">@Vnd(Model.TotalRevenue)</div><div class="stat-card__hint text-danger">+@Model.TotalRevenueChangePercent.ToString("0.#")%</div></div></div>
     </div>
     <div class="col-md-6 col-lg-4">
-        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dịch thành công</div><div class="stat-card__value">@Model.SuccessfulToday</div><div class="stat-card__hint text-secondary">Hôm nay</div></div></div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dá»‹ch thÃ nh cÃ´ng</div><div class="stat-card__value">@Model.SuccessfulToday</div><div class="stat-card__hint text-secondary">HÃ´m nay</div></div></div>
     </div>
     <div class="col-md-12 col-lg-4">
-        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dịch chờ xử lý</div><div class="stat-card__value">@Model.PendingCount</div><div class="stat-card__hint text-danger">@Model.PendingNeedsApprovalCount cần duyệt</div></div></div>
+        <div class="card stat-card"><div class="card-body"><div class="stat-card__label text-uppercase">Giao dá»‹ch chá» xá»­ lÃ½</div><div class="stat-card__value">@Model.PendingCount</div><div class="stat-card__hint text-danger">@Model.PendingNeedsApprovalCount cáº§n duyá»‡t</div></div></div>
     </div>
 </div>
 
 <form method="get" id="paymentFilterForm" class="payment-filter mb-3" autocomplete="off" asp-controller="Payments" asp-action="Index">
     <div class="payment-filter__search">
-        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="Tìm mã hóa đơn, bệnh nhân, dịch vụ..." />
+        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="TÃ¬m mÃ£ hÃ³a Ä‘Æ¡n, bá»‡nh nhÃ¢n, dá»‹ch vá»¥..." />
     </div>
     <select name="sourceFilter" class="form-select">
-        <option value="">Tất cả nguồn</option>
+        <option value="">Táº¥t cáº£ nguá»“n</option>
         <option value="Payments" selected="@(Model.SourceFilter == "Payments")">Payments</option>
         <option value="Invoices" selected="@(Model.SourceFilter == "Invoices")">Invoices</option>
     </select>
     <select name="statusFilter" class="form-select">
-        <option value="">Tất cả trạng thái</option>
-        <option value="Paid" selected="@(Model.StatusFilter == "Paid")">Đã thanh toán</option>
-        <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ xử lý</option>
-        <option value="Failed" selected="@(Model.StatusFilter == "Failed")">Thất bại</option>
+        <option value="">Táº¥t cáº£ tráº¡ng thÃ¡i</option>
+        <option value="Paid" selected="@(Model.StatusFilter == "Paid")">ÄÃ£ thanh toÃ¡n</option>
+        <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chá» xá»­ lÃ½</option>
+        <option value="Failed" selected="@(Model.StatusFilter == "Failed")">Tháº¥t báº¡i</option>
     </select>
     <select name="methodFilter" class="form-select">
-        <option value="">Tất cả phương thức</option>
-        <option value="CreditCard" selected="@(Model.MethodFilter == "CreditCard")">Thẻ</option>
-        <option value="AtmCard" selected="@(Model.MethodFilter == "AtmCard")">Thẻ ATM</option>
-        <option value="Cash" selected="@(Model.MethodFilter == "Cash")">Tiền mặt</option>
-        <option value="BankTransfer" selected="@(Model.MethodFilter == "BankTransfer")">Chuyển khoản</option>
+        <option value="">Táº¥t cáº£ phÆ°Æ¡ng thá»©c</option>
+        <option value="CreditCard" selected="@(Model.MethodFilter == "CreditCard")">Tháº»</option>
+        <option value="AtmCard" selected="@(Model.MethodFilter == "AtmCard")">Tháº» ATM</option>
+        <option value="Cash" selected="@(Model.MethodFilter == "Cash")">Tiá»n máº·t</option>
+        <option value="BankTransfer" selected="@(Model.MethodFilter == "BankTransfer")">Chuyá»ƒn khoáº£n</option>
         <option value="MoMo" selected="@(Model.MethodFilter == "MoMo")">MoMo</option>
     </select>
     <div class="medical-date-range payment-date-filter" data-payment-date-range data-has-date-filter="@((Model.FromDate.HasValue || Model.ToDate.HasValue).ToString().ToLowerInvariant())">
@@ -62,15 +62,15 @@
         </button>
         <div class="medical-date-range__popover" data-payment-date-range-panel>
             <div class="payment-date-filter__presets">
-                <button type="button" class="btn btn-sm btn-light" data-payment-all-dates>Tất cả ngày</button>
-                <button type="button" class="btn btn-sm btn-outline-primary" data-payment-custom-dates>Chọn khoảng ngày</button>
+                <button type="button" class="btn btn-sm btn-light" data-payment-all-dates>Táº¥t cáº£ ngÃ y</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-payment-custom-dates>Chá»n khoáº£ng ngÃ y</button>
             </div>
             <div data-payment-custom-date-fields>
-                <label class="form-label small text-secondary">Từ ngày</label>
+                <label class="form-label small text-secondary">Tá»« ngÃ y</label>
                 <input name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-payment-date-start />
             </div>
             <div data-payment-custom-date-fields>
-                <label class="form-label small text-secondary">Đến ngày</label>
+                <label class="form-label small text-secondary">Äáº¿n ngÃ y</label>
                 <input name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" type="date" class="form-control" data-payment-date-end />
             </div>
         </div>
@@ -86,21 +86,22 @@
             <table class="table align-middle mb-0 admin-table">
                 <thead>
                     <tr class="text-secondary">
-                        <th class="payment-select-col">Chọn</th>
-                        <th>Mã hóa đơn</th>
-                        <th>Bệnh nhân</th>
-                        <th>Dịch vụ</th>
-                        <th>Số tiền</th>
-                        <th>Ngày thanh toán</th>
-                        <th>Phương thức</th>
-                        <th>Trạng thái</th>
+                        <th class="payment-select-col">Chá»n</th>
+                        <th>MÃ£ hÃ³a Ä‘Æ¡n</th>
+                        <th>Bá»‡nh nhÃ¢n</th>
+                        <th>Dá»‹ch vá»¥</th>
+                        <th>Sá»‘ tiá»n</th>
+                        <th>NgÃ y thanh toÃ¡n</th>
+                        <th>PhÆ°Æ¡ng thá»©c</th>
+                        <th>Tráº¡ng thÃ¡i</th>
+                        <th class="text-end">Xử lý</th>
                     </tr>
                 </thead>
                 <tbody>
                 @if (Model.Transactions.Count == 0)
                 {
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             <div class="empty-state empty-state--rich">
                                 <div class="empty-state__icon" aria-hidden="true">
                                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -108,8 +109,8 @@
                                         <path d="M4 10h16M8 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                                     </svg>
                                 </div>
-                                <div class="empty-state__title">Không tìm thấy giao dịch phù hợp với bộ lọc.</div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-payment-filters>Xóa bộ lọc</button>
+                                <div class="empty-state__title">KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch phÃ¹ há»£p vá»›i bá»™ lá»c.</div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-payment-filters>XÃ³a bá»™ lá»c</button>
                             </div>
                         </td>
                     </tr>
@@ -126,7 +127,7 @@
                                        value="@t.Id"
                                        data-invoice-id="@t.Id"
                                        data-source-collection="@t.SourceCollection"
-                                       aria-label="Chọn hóa đơn @t.InvoiceCode" />
+                                       aria-label="Chá»n hÃ³a Ä‘Æ¡n @t.InvoiceCode" />
                             </td>
                             <td><a href="#" class="admin-link">@t.InvoiceCode</a></td>
                             <td><div class="person-cell"><div class="avatar">@Initials(t.PatientName)</div><div class="fw-semibold">@ValueOrDash(t.PatientName)</div></div></td>
@@ -135,6 +136,29 @@
                             <td><div class="fw-semibold">@t.PaidAt.ToString("dd/MM/yyyy")</div><div class="text-secondary small">@t.PaidAt.ToString("HH:mm")</div></td>
                             <td>@MethodText(t.Method)</td>
                             <td><span class="admin-pill @StatusClass(t.Status)">@StatusText(t.Status)</span></td>
+                            <td class="text-end">
+                                @if (t.Status == Web_Admin_Booking_App.Models.TransactionStatus.Pending)
+                                {
+                                    <div class="d-inline-flex gap-1">
+                                        <form asp-controller="Payments" asp-action="MarkPaid" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@t.Id" />
+                                            <input type="hidden" name="sourceCollection" value="@t.SourceCollection" />
+                                            <button class="btn btn-sm btn-success" type="submit">Đã thu</button>
+                                        </form>
+                                        <form asp-controller="Payments" asp-action="MarkFailed" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@t.Id" />
+                                            <input type="hidden" name="sourceCollection" value="@t.SourceCollection" />
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Thất bại</button>
+                                        </form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-secondary small">-</span>
+                                }
+                            </td>
                         </tr>
                     }
                 }
@@ -142,7 +166,7 @@
             </table>
         </div>
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-top">
-            <div class="text-secondary small">Hiển thị @Model.Transactions.Count giao dịch</div>
+            <div class="text-secondary small">Hiá»ƒn thá»‹ @Model.Transactions.Count giao dá»‹ch</div>
         </div>
     </div>
 </div>
@@ -166,8 +190,8 @@
 
     let timer;
     let dateMode = range?.dataset.hasDateFilter === 'true' ? 'custom' : 'all';
-    const allDatesLabel = 'Tất cả ngày';
-    const customDatesLabel = 'Chọn khoảng ngày';
+    const allDatesLabel = 'Táº¥t cáº£ ngÃ y';
+    const customDatesLabel = 'Chá»n khoáº£ng ngÃ y';
 
     const clearSelection = () => {
         if (!exportButton) return;
@@ -210,15 +234,15 @@
         }
 
         if (start.value && end.value) label.textContent = `${start.value} - ${end.value}`;
-        else if (start.value) label.textContent = `Từ ${start.value}`;
-        else if (end.value) label.textContent = `Đến ${end.value}`;
+        else if (start.value) label.textContent = `Tá»« ${start.value}`;
+        else if (end.value) label.textContent = `Äáº¿n ${end.value}`;
         else label.textContent = customDatesLabel;
     };
 
     const validateFilters = () => {
         const search = form.querySelector('[name="search"]')?.value?.trim() || '';
-        if (search.length > 100) return 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.';
-        if (dateMode === 'custom' && start?.value && end?.value && end.value < start.value) return 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+        if (search.length > 100) return 'Tá»« khÃ³a tÃ¬m kiáº¿m khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 100 kÃ½ tá»±.';
+        if (dateMode === 'custom' && start?.value && end?.value && end.value < start.value) return 'NgÃ y káº¿t thÃºc pháº£i lá»›n hÆ¡n hoáº·c báº±ng ngÃ y báº¯t Ä‘áº§u.';
         return '';
     };
 
@@ -333,9 +357,9 @@
     private static string DateRangeLabel(DateOnly? fromDate, DateOnly? toDate)
     {
         if (fromDate.HasValue && toDate.HasValue) return $"{fromDate:yyyy-MM-dd} - {toDate:yyyy-MM-dd}";
-        if (fromDate.HasValue) return $"Từ {fromDate:yyyy-MM-dd}";
-        if (toDate.HasValue) return $"Đến {toDate:yyyy-MM-dd}";
-        return "Tất cả ngày";
+        if (fromDate.HasValue) return $"Tá»« {fromDate:yyyy-MM-dd}";
+        if (toDate.HasValue) return $"Äáº¿n {toDate:yyyy-MM-dd}";
+        return "Táº¥t cáº£ ngÃ y";
     }
 
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
@@ -351,24 +375,24 @@
     private static string Vnd(decimal amount)
     {
         var v = string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}", amount);
-        return v + " đ";
+        return v + " Ä‘";
     }
 
     private static string MethodText(Web_Admin_Booking_App.Models.PaymentMethod method) => method switch
     {
-        Web_Admin_Booking_App.Models.PaymentMethod.CreditCard => "Thẻ",
-        Web_Admin_Booking_App.Models.PaymentMethod.AtmCard => "Thẻ ATM",
-        Web_Admin_Booking_App.Models.PaymentMethod.Cash => "Tiền mặt",
-        Web_Admin_Booking_App.Models.PaymentMethod.BankTransfer => "Chuyển khoản",
+        Web_Admin_Booking_App.Models.PaymentMethod.CreditCard => "Tháº»",
+        Web_Admin_Booking_App.Models.PaymentMethod.AtmCard => "Tháº» ATM",
+        Web_Admin_Booking_App.Models.PaymentMethod.Cash => "Tiá»n máº·t",
+        Web_Admin_Booking_App.Models.PaymentMethod.BankTransfer => "Chuyá»ƒn khoáº£n",
         Web_Admin_Booking_App.Models.PaymentMethod.MoMo => "MoMo",
         _ => "-"
     };
 
     private static string StatusText(Web_Admin_Booking_App.Models.TransactionStatus status) => status switch
     {
-        Web_Admin_Booking_App.Models.TransactionStatus.Paid => "Đã thanh toán",
-        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "Chờ xử lý",
-        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "Thất bại",
+        Web_Admin_Booking_App.Models.TransactionStatus.Paid => "ÄÃ£ thanh toÃ¡n",
+        Web_Admin_Booking_App.Models.TransactionStatus.Pending => "Chá» xá»­ lÃ½",
+        Web_Admin_Booking_App.Models.TransactionStatus.Failed => "Tháº¥t báº¡i",
         _ => "-"
     };
 

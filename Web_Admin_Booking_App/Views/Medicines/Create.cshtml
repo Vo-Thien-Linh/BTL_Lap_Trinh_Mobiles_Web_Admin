@@ -1,0 +1,24 @@
+@model Web_Admin_Booking_App.Models.MedicineUpsertViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Thêm thuốc";
+    ViewData["FormAction"] = "Create";
+}
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Thêm thuốc</div>
+        <div class="text-secondary">Khai báo thuốc, hàm lượng, đơn vị, giá và tồn kho.</div>
+    </div>
+    <a class="btn btn-light" asp-controller="Medicines" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body">
+        <partial name="_MedicineForm" model="Model" />
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
