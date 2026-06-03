@@ -21,4 +21,5 @@ public sealed class FirebaseSettings
     public string[] NotificationCollections { get; set; } = ["Notifications"];
     public string[] NotificationTemplateCollections { get; set; } = ["notification_templates"];
     public string[] HealthInsuranceCollections { get; set; } = ["health_insurances"];
+    public string[] MedicineCollections { get; set; } = ["Medicines", "medicines", "Drugs", "drugs", "Medications", "medications"];
 }

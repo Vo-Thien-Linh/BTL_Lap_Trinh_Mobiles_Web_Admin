@@ -791,6 +791,246 @@ public sealed class FirestoreAdminDataService
         };
     }
 
+    public async Task UpdatePaymentStatusAsync(
+        string id,
+        string? sourceCollection,
+        TransactionStatus status,
+        string staffIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            throw new InvalidOperationException("Không xác định được giao dịch cần cập nhật.");
+        }
+
+        var doc = await FindPaymentDocumentAsync(id.Trim(), sourceCollection, cancellationToken);
+        if (doc is null || !doc.Exists)
+        {
+            throw new InvalidOperationException("Không tìm thấy giao dịch thanh toán.");
+        }
+
+        var now = Timestamp.GetCurrentTimestamp();
+        var payload = new Dictionary<string, object?>
+        {
+            ["status"] = status switch
+            {
+                TransactionStatus.Paid => "paid",
+                TransactionStatus.Failed => "failed",
+                _ => "pending"
+            },
+            ["updatedAt"] = now,
+            ["processedBy"] = string.IsNullOrWhiteSpace(staffIdentifier) ? "staff" : staffIdentifier.Trim(),
+            ["processedAt"] = now
+        };
+
+        if (status == TransactionStatus.Paid)
+        {
+            payload["paidAt"] = now;
+        }
+
+        await doc.Reference.SetAsync(payload, SetOptions.MergeAll, cancellationToken);
+    }
+
+    public async Task<MedicineIndexViewModel> GetMedicinesAsync(
+        string? search = null,
+        string? groupFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var snapshot = await GetFirstAvailableCollectionAsync(_settings.MedicineCollections, cancellationToken);
+        var medicines = snapshot.Documents.Select(MapMedicine).ToList();
+        var filtered = medicines.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var key = search.Trim().ToLowerInvariant();
+            filtered = filtered.Where(x =>
+                x.MedicineCode.ToLowerInvariant().Contains(key) ||
+                x.Name.ToLowerInvariant().Contains(key) ||
+                x.Strength.ToLowerInvariant().Contains(key) ||
+                x.Group.ToLowerInvariant().Contains(key));
+        }
+
+        if (!string.IsNullOrWhiteSpace(groupFilter))
+        {
+            filtered = filtered.Where(x => string.Equals(x.Group, groupFilter.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        return new MedicineIndexViewModel
+        {
+            Search = search,
+            GroupFilter = groupFilter,
+            TotalCount = medicines.Count,
+            LowStockCount = medicines.Count(x => x.Quantity <= 10),
+            InventoryValue = medicines.Sum(x => x.UnitPrice * x.Quantity),
+            Groups = medicines
+                .Select(x => x.Group)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList(),
+            Items = filtered
+                .OrderBy(x => x.Name)
+                .ThenBy(x => x.Strength)
+                .ToList()
+        };
+    }
+
+    public async Task<MedicineUpsertViewModel> BuildMedicineUpsertModelAsync(
+        MedicineUpsertViewModel model,
+        CancellationToken cancellationToken = default)
+    {
+        var snapshot = await GetFirstAvailableCollectionAsync(_settings.MedicineCollections, cancellationToken);
+        var medicines = snapshot.Documents.Select(MapMedicine).ToList();
+
+        model.UnitSuggestions = medicines
+            .Select(x => x.Unit)
+            .Concat(new[] { "viên", "gói", "ống", "lọ", "chai", "tuýp", "hộp" })
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        model.GroupSuggestions = medicines
+            .Select(x => x.Group)
+            .Concat(new[] { "Kháng sinh", "Giảm đau", "Hạ sốt", "Vitamin", "Tim mạch", "Tiêu hóa", "Dị ứng" })
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        return model;
+    }
+
+    public async Task<MedicineUpsertViewModel?> GetMedicineForEditAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+
+        var snapshot = await GetFirstExistingDocumentAsync(_settings.MedicineCollections, id.Trim(), cancellationToken);
+        if (snapshot is null || !snapshot.Exists) return null;
+
+        var model = new MedicineUpsertViewModel
+        {
+            Id = snapshot.Id,
+            MedicineCode = GetMedicineCode(snapshot),
+            Name = GetString(snapshot, "name", "medicineName", "tenThuoc", "drugName", "displayName") ?? string.Empty,
+            Strength = GetString(snapshot, "strength", "dosage", "concentration", "hamLuong", "content") ?? string.Empty,
+            Unit = GetString(snapshot, "unit", "donVi", "unitName") ?? string.Empty,
+            UnitPrice = GetDecimal(snapshot, "unitPrice", "price", "donGia", "salePrice"),
+            Group = GetString(snapshot, "group", "medicineGroup", "category", "nhomThuoc", "drugGroup") ?? string.Empty,
+            Quantity = GetInt(snapshot, "quantity", "stock", "stockQuantity", "soLuong", "inventoryQuantity"),
+            LowStockThreshold = Math.Max(0, GetInt(snapshot, "lowStockThreshold", "minQuantity", "nguongCanhBao")),
+            Note = GetString(snapshot, "note", "description", "ghiChu"),
+            IsActive = GetBool(snapshot, "isActive", "active", "status") ?? true
+        };
+
+        return await BuildMedicineUpsertModelAsync(model, cancellationToken);
+    }
+
+    public async Task<string> CreateMedicineAsync(MedicineUpsertViewModel model, CancellationToken cancellationToken = default)
+    {
+        var medicineCollection = await GetFirstAvailableCollectionNameAsync(_settings.MedicineCollections, cancellationToken);
+        return await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var now = Timestamp.GetCurrentTimestamp();
+            var counterRef = _firestore.Collection("Counters").Document("document_codes");
+            var counterSnapshot = await transaction.GetSnapshotAsync(counterRef, CancellationToken.None);
+            var nextMedicineNumber = Math.Max(1, GetInt(counterSnapshot, "medicinesNext"));
+            string medicineId;
+            DocumentReference medicineRef;
+
+            while (true)
+            {
+                medicineId = FormatSequentialCode("TH", nextMedicineNumber);
+                medicineRef = _firestore.Collection(medicineCollection).Document(medicineId);
+                var medicineSnapshot = await transaction.GetSnapshotAsync(medicineRef, CancellationToken.None);
+                var legacyMedicineId = FormatLegacySequentialCode("TH", nextMedicineNumber);
+                var legacyMedicineSnapshot = string.Equals(legacyMedicineId, medicineId, StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : await transaction.GetSnapshotAsync(_firestore.Collection(medicineCollection).Document(legacyMedicineId), CancellationToken.None);
+
+                if (!medicineSnapshot.Exists && legacyMedicineSnapshot?.Exists != true) break;
+                nextMedicineNumber++;
+            }
+
+            model.MedicineCode = medicineId;
+            transaction.Set(medicineRef, ToMedicinePayload(model, true, now), SetOptions.MergeAll);
+            transaction.Set(counterRef, new Dictionary<string, object>
+            {
+                ["medicinesNext"] = nextMedicineNumber + 1,
+                ["updatedAt"] = now
+            }, SetOptions.MergeAll);
+
+            return medicineId;
+        }, cancellationToken: CancellationToken.None);
+    }
+
+    public async Task UpdateMedicineAsync(MedicineUpsertViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(model.Id))
+        {
+            throw new InvalidOperationException("Không xác định được thuốc cần cập nhật.");
+        }
+
+        var snapshot = await GetFirstExistingDocumentAsync(_settings.MedicineCollections, model.Id.Trim(), cancellationToken);
+        if (snapshot is null || !snapshot.Exists)
+        {
+            throw new InvalidOperationException("Không tìm thấy thuốc cần cập nhật.");
+        }
+
+        model.MedicineCode = string.IsNullOrWhiteSpace(model.MedicineCode)
+            ? GetMedicineCode(snapshot)
+            : model.MedicineCode.Trim();
+
+        await snapshot.Reference.SetAsync(ToMedicinePayload(model, false, Timestamp.GetCurrentTimestamp()), SetOptions.MergeAll, cancellationToken);
+    }
+
+    private static MedicineListItemViewModel MapMedicine(DocumentSnapshot doc)
+    {
+        return new MedicineListItemViewModel
+        {
+            Id = doc.Id,
+            MedicineCode = GetMedicineCode(doc),
+            Name = GetString(doc, "name", "medicineName", "tenThuoc", "drugName", "displayName") ?? "Chưa có tên",
+            Strength = GetString(doc, "strength", "dosage", "concentration", "hamLuong", "content") ?? string.Empty,
+            Unit = GetString(doc, "unit", "donVi", "unitName") ?? string.Empty,
+            UnitPrice = GetDecimal(doc, "unitPrice", "price", "donGia", "salePrice"),
+            Group = GetString(doc, "group", "medicineGroup", "category", "nhomThuoc", "drugGroup") ?? string.Empty,
+            Quantity = GetInt(doc, "quantity", "stock", "stockQuantity", "soLuong", "inventoryQuantity"),
+            IsActive = GetBool(doc, "isActive", "active", "status") ?? true,
+            UpdatedAt = GetDateTime(doc, "updatedAt", "createdAt")
+        };
+    }
+
+    private static string GetMedicineCode(DocumentSnapshot doc)
+    {
+        return GetString(doc, "medicineCode", "code", "maThuoc", "drugCode", "id") ?? doc.Id;
+    }
+
+    private static Dictionary<string, object?> ToMedicinePayload(MedicineUpsertViewModel model, bool isCreate, Timestamp now)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["medicineCode"] = model.MedicineCode?.Trim() ?? string.Empty,
+            ["name"] = model.Name.Trim(),
+            ["strength"] = model.Strength.Trim(),
+            ["unit"] = model.Unit.Trim(),
+            ["unitPrice"] = Convert.ToInt64(model.UnitPrice),
+            ["group"] = model.Group.Trim(),
+            ["quantity"] = Math.Max(0, model.Quantity),
+            ["lowStockThreshold"] = Math.Max(0, model.LowStockThreshold),
+            ["note"] = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim(),
+            ["isActive"] = model.IsActive,
+            ["updatedAt"] = now
+        };
+
+        if (isCreate)
+        {
+            payload["createdAt"] = now;
+        }
+
+        return payload;
+    }
+
     private async Task<DocumentSnapshot?> FindPaymentDocumentAsync(
         string id,
         string? sourceCollection,
@@ -896,9 +1136,23 @@ public sealed class FirestoreAdminDataService
         };
     }
 
-    public async Task<WorkShiftsIndexViewModel> GetWorkShiftsAsync(string? mode = null, DateOnly? selectedWeekStart = null, CancellationToken cancellationToken = default)
+    public Task<WorkShiftsIndexViewModel> GetWorkShiftsAsync(
+        string? mode = null,
+        DateOnly? selectedWeekStart = null,
+        CancellationToken cancellationToken = default)
     {
-        mode = string.Equals(mode, "list", StringComparison.OrdinalIgnoreCase) ? "list" : "calendar";
+        return GetWorkShiftsAsync(mode, selectedWeekStart, null, cancellationToken);
+    }
+
+    public async Task<WorkShiftsIndexViewModel> GetWorkShiftsAsync(
+        string? mode = null,
+        DateOnly? selectedWeekStart = null,
+        string? selectedDoctorId = null,
+        CancellationToken cancellationToken = default)
+    {
+        mode = string.Equals(mode, "calendar", StringComparison.OrdinalIgnoreCase) ? "calendar" : "list";
+        selectedDoctorId = selectedDoctorId?.Trim() ?? string.Empty;
+        var hasDoctorFilter = !string.IsNullOrWhiteSpace(selectedDoctorId);
 
         var today = DateOnly.FromDateTime(DateTime.Today);
         var monthStart = new DateOnly(today.Year, today.Month, 1);
@@ -908,10 +1162,19 @@ public sealed class FirestoreAdminDataService
         var weekEnd = weekStart.AddDays(6);
         var calendar = CalendarBuilder.BuildMonth(monthStart);
 
-        var scheduleDocs = await GetFirstAvailableCollectionAsync(_settings.DoctorScheduleCollections, cancellationToken);
+        var scheduleRangeStart = weekStart < monthStart ? weekStart : monthStart;
+        var scheduleRangeEnd = weekEnd > monthEnd ? weekEnd : monthEnd;
         var shiftDocs = await GetFirstAvailableCollectionAsync(_settings.ShiftCollections, cancellationToken);
         var shifts = LoadShiftInfo(shiftDocs.Documents);
         var doctors = await LoadAppointmentDoctorsAsync(cancellationToken);
+        var selectedDoctor = hasDoctorFilter
+            ? doctors.FirstOrDefault(x =>
+                string.Equals(x.DocumentId, selectedDoctorId, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.UserId, selectedDoctorId, StringComparison.OrdinalIgnoreCase))
+            : null;
+        var scheduleDocs = hasDoctorFilter
+            ? await QueryDoctorSchedulesByDoctorAsync(selectedDoctorId, selectedDoctor?.UserId, cancellationToken)
+            : await QueryDoctorSchedulesByDateRangeAsync(scheduleRangeStart, scheduleRangeEnd, cancellationToken);
         var departments = await LoadDepartmentNamesAsync(cancellationToken);
         var departmentRooms = await LoadDepartmentRoomsAsync(cancellationToken);
 
@@ -920,7 +1183,7 @@ public sealed class FirestoreAdminDataService
         var scheduleRows = new List<DoctorScheduleRowViewModel>();
         var unassignedCount = 0;
 
-        foreach (var doc in scheduleDocs.Documents)
+        foreach (var doc in scheduleDocs)
         {
             var date = GetScheduleDate(doc);
             if (date is null) continue;
@@ -975,12 +1238,14 @@ public sealed class FirestoreAdminDataService
                 monthAssignments.Add(assignment);
             }
 
-            if (date.Value >= monthStart && date.Value <= monthEnd ||
+            if (hasDoctorFilter ||
+                date.Value >= monthStart && date.Value <= monthEnd ||
                 date.Value >= weekStart && date.Value <= weekEnd)
             {
                 scheduleRows.Add(new DoctorScheduleRowViewModel
                 {
                     DocumentId = doc.Id,
+                    DoctorId = doctorId ?? string.Empty,
                     Date = date.Value,
                     DoctorName = doctorName,
                     DepartmentName = department,
@@ -1010,11 +1275,12 @@ public sealed class FirestoreAdminDataService
         return new WorkShiftsIndexViewModel
         {
             Mode = mode,
+            SelectedDoctorId = selectedDoctorId,
             RangeLabel = $"{monthStart:dd/MM} - {monthEnd:dd/MM/yyyy}",
             TotalDoctorsLabel = $"{doctors.Count} Bác sĩ",
             UnassignedCount = unassignedCount,
             FillRatePercent = fillRate,
-            ConflictCount = CountScheduleConflicts(scheduleDocs.Documents),
+            ConflictCount = CountScheduleConflicts(scheduleDocs),
             MonthLabel = $"Tháng {monthStart.Month}, {monthStart.Year}",
             Calendar = calendar,
             WeeklyTable = BuildWeeklyScheduleTable(scheduleRows, weekStart, weekEnd),
@@ -1056,7 +1322,6 @@ public sealed class FirestoreAdminDataService
         }
 
         var collection = _firestore.Collection(_settings.DoctorScheduleCollections.First());
-        var existingSchedules = await GetFirstAvailableCollectionAsync(_settings.DoctorScheduleCollections, cancellationToken);
         var doctors = await LoadAppointmentDoctorsAsync(cancellationToken);
         var doctor = doctors.FirstOrDefault(x => string.Equals(x.DocumentId, model.DoctorId, StringComparison.OrdinalIgnoreCase));
         var weeksAhead = Math.Clamp(model.WeeksAhead, 1, 8);
@@ -1073,7 +1338,8 @@ public sealed class FirestoreAdminDataService
 
             foreach (var shiftId in model.ShiftIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                if (HasDoctorScheduleConflict(existingSchedules.Documents, model.DoctorId, roomNumber, date, shiftId))
+                var existingSchedules = await QueryDoctorSchedulesForConflictAsync(date, shiftId, cancellationToken);
+                if (HasDoctorScheduleConflict(existingSchedules, model.DoctorId, roomNumber, date, shiftId))
                 {
                     continue;
                 }
@@ -1141,11 +1407,16 @@ public sealed class FirestoreAdminDataService
 
     public async Task UpdateDoctorScheduleAsync(string documentId, bool isActive, int availableSlots, string? roomNumber, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(documentId)) return;
+        if (string.IsNullOrWhiteSpace(documentId))
+        {
+            throw new InvalidOperationException("Không xác định được lịch cần cập nhật.");
+        }
 
-        var doc = _firestore.Collection(_settings.DoctorScheduleCollections.First()).Document(documentId);
-        var snapshot = await doc.GetSnapshotAsync(cancellationToken);
-        if (!snapshot.Exists) return;
+        var snapshot = await GetFirstExistingDocumentAsync(_settings.DoctorScheduleCollections, documentId.Trim(), cancellationToken);
+        if (snapshot is null || !snapshot.Exists)
+        {
+            throw new InvalidOperationException("Không tìm thấy lịch cần cập nhật.");
+        }
 
         if (await HasAppointmentsForScheduleAsync(documentId, cancellationToken))
         {
@@ -1158,14 +1429,14 @@ public sealed class FirestoreAdminDataService
 
         if (date.HasValue && !string.IsNullOrWhiteSpace(shiftId) && !string.IsNullOrWhiteSpace(doctorId))
         {
-            var allSchedules = await GetFirstAvailableCollectionAsync(_settings.DoctorScheduleCollections, cancellationToken);
-            if (HasDoctorScheduleConflict(allSchedules.Documents, doctorId, roomNumber, date.Value, shiftId, documentId))
+            var existingSchedules = await QueryDoctorSchedulesForConflictAsync(date.Value, shiftId, cancellationToken);
+            if (HasDoctorScheduleConflict(existingSchedules, doctorId, roomNumber, date.Value, shiftId, documentId))
             {
                 throw new InvalidOperationException("Lịch bị trùng bác sĩ hoặc trùng phòng trong cùng ngày, cùng ca.");
             }
         }
 
-        await doc.UpdateAsync(new Dictionary<string, object>
+        await snapshot.Reference.UpdateAsync(new Dictionary<string, object>
         {
             ["isActive"] = isActive,
             ["maxSlots"] = Math.Max(availableSlots, 0),
@@ -1176,15 +1447,192 @@ public sealed class FirestoreAdminDataService
         }, cancellationToken: cancellationToken);
     }
 
+    public async Task<WorkScheduleEditViewModel?> GetDoctorScheduleEditAsync(string documentId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(documentId)) return null;
+
+        var snapshot = await GetFirstExistingDocumentAsync(_settings.DoctorScheduleCollections, documentId.Trim(), cancellationToken);
+        if (snapshot is null || !snapshot.Exists) return null;
+
+        var shiftDocs = await GetFirstAvailableCollectionAsync(_settings.ShiftCollections, cancellationToken);
+        var shifts = LoadShiftInfo(shiftDocs.Documents);
+        var doctors = await LoadAppointmentDoctorsAsync(cancellationToken);
+        var departments = await LoadDepartmentNamesAsync(cancellationToken);
+        var departmentRooms = await LoadDepartmentRoomsAsync(cancellationToken);
+        var shiftId = GetString(snapshot, "shiftId", "ShiftId") ?? string.Empty;
+
+        return new WorkScheduleEditViewModel
+        {
+            DocumentId = snapshot.Id,
+            DoctorId = GetString(snapshot, "doctorId", "DoctorId") ?? string.Empty,
+            DepartmentId = GetString(snapshot, "departmentId", "DepartmentId") ?? string.Empty,
+            RoomId = GetString(snapshot, "roomId", "RoomId") ?? string.Empty,
+            RoomNumber = GetString(snapshot, "roomNumber", "room", "roomName", "clinicRoom", "location") ?? string.Empty,
+            ShiftId = shiftId,
+            ScheduleDate = GetScheduleDate(snapshot) ?? DateOnly.FromDateTime(DateTime.Today),
+            MaxSlots = Math.Max(1, GetInt(snapshot, "maxSlots", "MaxSlots", "availableSlots", "AvailableSlots", "slots")),
+            AvailableSlots = Math.Max(0, GetInt(snapshot, "availableSlots", "AvailableSlots", "slots")),
+            IsActive = GetBool(snapshot, "isActive", "IsActive") ?? true,
+            Doctors = doctors
+                .OrderBy(x => x.FullName)
+                .Select(x => new SelectOption { Value = x.DocumentId, Text = x.FullName })
+                .ToList(),
+            Departments = departments
+                .OrderBy(x => x.Value)
+                .Select(x => new SelectOption { Value = x.Key, Text = x.Value })
+                .ToList(),
+            DepartmentRooms = departmentRooms,
+            Shifts = shifts
+                .Where(x => ParseShiftType(x.Value.Type ?? x.Key) is ShiftType.Morning or ShiftType.Afternoon)
+                .OrderBy(x => x.Key)
+                .Select(x => new SelectOption { Value = x.Key, Text = BuildShiftLabel(x.Value, ParseShiftType(x.Value.Type ?? x.Key)) })
+                .ToList()
+        };
+    }
+
+    public async Task UpdateDoctorScheduleAsync(WorkScheduleEditViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(model.DocumentId))
+        {
+            throw new InvalidOperationException("Không xác định được lịch cần sửa.");
+        }
+
+        var snapshot = await GetFirstExistingDocumentAsync(_settings.DoctorScheduleCollections, model.DocumentId.Trim(), cancellationToken);
+        if (snapshot is null || !snapshot.Exists)
+        {
+            throw new InvalidOperationException("Không tìm thấy lịch cần sửa.");
+        }
+
+        if (await HasAppointmentsForScheduleAsync(model.DocumentId, cancellationToken))
+        {
+            throw new InvalidOperationException("Lịch này đã có lịch hẹn. Không thể sửa bác sĩ, ngày, ca, phòng hoặc slot nếu chưa xử lý các lịch hẹn liên quan.");
+        }
+
+        var existingSchedules = await QueryDoctorSchedulesForConflictAsync(model.ScheduleDate, model.ShiftId, cancellationToken);
+        if (HasDoctorScheduleConflict(existingSchedules, model.DoctorId, model.RoomNumber, model.ScheduleDate, model.ShiftId, model.DocumentId))
+        {
+            throw new InvalidOperationException("Lịch bị trùng bác sĩ hoặc trùng phòng trong cùng ngày, cùng ca.");
+        }
+
+        var doctors = await LoadAppointmentDoctorsAsync(cancellationToken);
+        var doctor = doctors.FirstOrDefault(x => string.Equals(x.DocumentId, model.DoctorId, StringComparison.OrdinalIgnoreCase));
+        var maxSlots = Math.Max(1, model.MaxSlots);
+        var availableSlots = Math.Clamp(model.AvailableSlots, 0, maxSlots);
+        var roomNumber = model.RoomNumber.Trim();
+
+        await snapshot.Reference.SetAsync(new Dictionary<string, object?>
+        {
+            ["doctorId"] = model.DoctorId.Trim(),
+            ["userId"] = doctor?.UserId ?? string.Empty,
+            ["departmentId"] = model.DepartmentId.Trim(),
+            ["scheduleDate"] = Timestamp.FromDateTime(model.ScheduleDate.ToDateTime(TimeOnly.MinValue).ToUniversalTime()),
+            ["shiftId"] = model.ShiftId.Trim(),
+            ["roomId"] = string.IsNullOrWhiteSpace(model.RoomId) ? NormalizeRoomId(roomNumber) : model.RoomId.Trim(),
+            ["roomNumber"] = roomNumber,
+            ["maxSlots"] = maxSlots,
+            ["availableSlots"] = availableSlots,
+            ["isActive"] = model.IsActive,
+            ["updatedAt"] = Timestamp.GetCurrentTimestamp()
+        }, SetOptions.MergeAll, cancellationToken);
+    }
+
+    public async Task<string> DuplicateDoctorScheduleAsync(string sourceScheduleId, DateOnly targetDate, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sourceScheduleId))
+        {
+            throw new InvalidOperationException("Không xác định được lịch mẫu cần bổ sung.");
+        }
+
+        var sourceSnapshot = await GetFirstExistingDocumentAsync(_settings.DoctorScheduleCollections, sourceScheduleId.Trim(), cancellationToken);
+        if (sourceSnapshot is null || !sourceSnapshot.Exists)
+        {
+            throw new InvalidOperationException("Không tìm thấy lịch mẫu cần bổ sung.");
+        }
+
+        var doctorId = GetString(sourceSnapshot, "doctorId", "DoctorId");
+        var departmentId = GetString(sourceSnapshot, "departmentId", "DepartmentId");
+        var shiftId = GetString(sourceSnapshot, "shiftId", "ShiftId");
+        var roomNumber = GetString(sourceSnapshot, "roomNumber", "room", "roomName", "clinicRoom", "location");
+
+        if (string.IsNullOrWhiteSpace(doctorId) ||
+            string.IsNullOrWhiteSpace(departmentId) ||
+            string.IsNullOrWhiteSpace(shiftId) ||
+            string.IsNullOrWhiteSpace(roomNumber))
+        {
+            throw new InvalidOperationException("Lịch mẫu thiếu bác sĩ, khoa, ca hoặc phòng nên không thể bổ sung.");
+        }
+
+        var existingSchedules = await QueryDoctorSchedulesForConflictAsync(targetDate, shiftId, cancellationToken);
+        if (HasDoctorScheduleConflict(existingSchedules, doctorId, roomNumber, targetDate, shiftId))
+        {
+            throw new InvalidOperationException("Không thể bổ sung vì bác sĩ hoặc phòng đã có lịch trong ngày này, cùng ca.");
+        }
+
+        var maxSlots = Math.Max(1, GetInt(sourceSnapshot, "maxSlots", "MaxSlots", "availableSlots", "AvailableSlots", "slots"));
+        var roomId = GetString(sourceSnapshot, "roomId", "RoomId") ?? NormalizeRoomId(roomNumber);
+        var userId = GetString(sourceSnapshot, "userId", "UserId") ?? string.Empty;
+        var isActive = GetBool(sourceSnapshot, "isActive", "IsActive") ?? true;
+        var collection = _firestore.Collection(_settings.DoctorScheduleCollections.First());
+
+        return await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var counterRef = _firestore.Collection("Counters").Document("document_codes");
+            var counterSnapshot = await transaction.GetSnapshotAsync(counterRef, CancellationToken.None);
+            var nextScheduleNumber = Math.Max(1, GetInt(counterSnapshot, "doctorSchedulesNext"));
+            string scheduleId;
+            DocumentReference scheduleRef;
+
+            while (true)
+            {
+                scheduleId = FormatSequentialCode("LLV", nextScheduleNumber);
+                scheduleRef = collection.Document(scheduleId);
+                var scheduleSnapshot = await transaction.GetSnapshotAsync(scheduleRef, CancellationToken.None);
+                var legacyScheduleId = FormatLegacySequentialCode("LLV", nextScheduleNumber);
+                var legacyScheduleSnapshot = string.Equals(legacyScheduleId, scheduleId, StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : await transaction.GetSnapshotAsync(collection.Document(legacyScheduleId), CancellationToken.None);
+
+                if (!scheduleSnapshot.Exists && legacyScheduleSnapshot?.Exists != true) break;
+                nextScheduleNumber++;
+            }
+
+            var now = Timestamp.GetCurrentTimestamp();
+            transaction.Set(scheduleRef, new Dictionary<string, object?>
+            {
+                ["scheduleCode"] = scheduleId,
+                ["doctorId"] = doctorId,
+                ["userId"] = userId,
+                ["departmentId"] = departmentId,
+                ["scheduleDate"] = Timestamp.FromDateTime(targetDate.ToDateTime(TimeOnly.MinValue).ToUniversalTime()),
+                ["shiftId"] = shiftId,
+                ["roomId"] = roomId,
+                ["roomNumber"] = roomNumber.Trim(),
+                ["maxSlots"] = maxSlots,
+                ["availableSlots"] = maxSlots,
+                ["isActive"] = isActive,
+                ["createdAt"] = now,
+                ["updatedAt"] = now
+            });
+
+            transaction.Set(counterRef, new Dictionary<string, object>
+            {
+                ["doctorSchedulesNext"] = nextScheduleNumber + 1,
+                ["updatedAt"] = now
+            }, SetOptions.MergeAll);
+
+            return scheduleId;
+        }, cancellationToken: CancellationToken.None);
+    }
+
     public async Task<int> BackfillScheduleRoomsAsync(WorkScheduleBackfillRoomViewModel model, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(model.RoomNumber)) return 0;
 
-        var docs = await GetFirstAvailableCollectionAsync(_settings.DoctorScheduleCollections, cancellationToken);
+        var docs = await QueryDoctorSchedulesMissingRoomAsync(cancellationToken);
         var collection = _firestore.Collection(_settings.DoctorScheduleCollections.First());
         var updatedCount = 0;
 
-        foreach (var doc in docs.Documents)
+        foreach (var doc in docs)
         {
             var currentRoom = GetString(doc, "roomNumber", "room", "roomId", "roomName");
             if (!string.IsNullOrWhiteSpace(currentRoom)) continue;
@@ -1215,6 +1663,125 @@ public sealed class FirestoreAdminDataService
         }
 
         return updatedCount;
+    }
+
+    private async Task<IReadOnlyList<DocumentSnapshot>> QueryDoctorSchedulesByDateRangeAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<DocumentSnapshot>();
+        var start = ToScheduleTimestamp(startDate);
+        var endExclusive = ToScheduleTimestamp(endDate.AddDays(1));
+
+        foreach (var collectionName in _settings.DoctorScheduleCollections
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal))
+        {
+            var snapshot = await _firestore.Collection(collectionName)
+                .WhereGreaterThanOrEqualTo("scheduleDate", start)
+                .WhereLessThan("scheduleDate", endExclusive)
+                .GetSnapshotAsync(cancellationToken);
+
+            result.AddRange(snapshot.Documents);
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<DocumentSnapshot>> QueryDoctorSchedulesByDoctorAsync(
+        string doctorId,
+        string? userId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(doctorId)) return Array.Empty<DocumentSnapshot>();
+
+        var result = new List<DocumentSnapshot>();
+        var ids = new[] { doctorId.Trim(), userId?.Trim() }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var collectionName in _settings.DoctorScheduleCollections
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal))
+        {
+            foreach (var id in ids)
+            {
+                var byDoctor = await _firestore.Collection(collectionName)
+                    .WhereEqualTo("doctorId", id)
+                    .GetSnapshotAsync(cancellationToken);
+                result.AddRange(byDoctor.Documents);
+
+                var byUser = await _firestore.Collection(collectionName)
+                    .WhereEqualTo("userId", id)
+                    .GetSnapshotAsync(cancellationToken);
+                result.AddRange(byUser.Documents);
+
+                var byDoctorUser = await _firestore.Collection(collectionName)
+                    .WhereEqualTo("doctorUserId", id)
+                    .GetSnapshotAsync(cancellationToken);
+                result.AddRange(byDoctorUser.Documents);
+            }
+        }
+
+        return result
+            .GroupBy(x => x.Reference.Path, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<DocumentSnapshot>> QueryDoctorSchedulesMissingRoomAsync(CancellationToken cancellationToken)
+    {
+        var result = new List<DocumentSnapshot>();
+
+        foreach (var collectionName in _settings.DoctorScheduleCollections
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal))
+        {
+            var snapshot = await _firestore.Collection(collectionName)
+                .WhereEqualTo("roomNumber", null)
+                .GetSnapshotAsync(cancellationToken);
+
+            result.AddRange(snapshot.Documents);
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<DocumentSnapshot>> QueryDoctorSchedulesForConflictAsync(
+        DateOnly scheduleDate,
+        string shiftId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(shiftId)) return Array.Empty<DocumentSnapshot>();
+
+        var result = new List<DocumentSnapshot>();
+        var start = ToScheduleTimestamp(scheduleDate);
+        var endExclusive = ToScheduleTimestamp(scheduleDate.AddDays(1));
+
+        foreach (var collectionName in _settings.DoctorScheduleCollections
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal))
+        {
+            var snapshot = await _firestore.Collection(collectionName)
+                .WhereGreaterThanOrEqualTo("scheduleDate", start)
+                .WhereLessThan("scheduleDate", endExclusive)
+                .GetSnapshotAsync(cancellationToken);
+
+            result.AddRange(snapshot.Documents.Where(doc =>
+                string.Equals(
+                    GetString(doc, "shiftId", "ShiftId", "shiftType", "type", "ShiftType"),
+                    shiftId.Trim(),
+                    StringComparison.OrdinalIgnoreCase)));
+        }
+
+        return result;
+    }
+
+    private static Timestamp ToScheduleTimestamp(DateOnly date)
+    {
+        return Timestamp.FromDateTime(date.ToDateTime(TimeOnly.MinValue).ToUniversalTime());
     }
 
     private static Dictionary<string, ShiftInfo> LoadShiftInfo(IEnumerable<DocumentSnapshot> docs)
@@ -1744,17 +2311,27 @@ public sealed class FirestoreAdminDataService
 
     private async Task<QuerySnapshot> GetFirstAvailableCollectionAsync(string[] collectionNames, CancellationToken cancellationToken)
     {
-        foreach (var collectionName in collectionNames.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal))
+        var fallbackCollection = await GetFirstAvailableCollectionNameAsync(collectionNames, cancellationToken);
+        return await _firestore.Collection(fallbackCollection).GetSnapshotAsync(cancellationToken);
+    }
+
+    private async Task<string> GetFirstAvailableCollectionNameAsync(string[] collectionNames, CancellationToken cancellationToken)
+    {
+        var normalizedNames = collectionNames
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var collectionName in normalizedNames)
         {
-            var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
+            var snapshot = await _firestore.Collection(collectionName).Limit(1).GetSnapshotAsync(cancellationToken);
             if (snapshot.Count > 0)
             {
-                return snapshot;
+                return collectionName;
             }
         }
 
-        var fallbackCollection = collectionNames.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "_missing_collection";
-        return await _firestore.Collection(fallbackCollection).GetSnapshotAsync(cancellationToken);
+        return normalizedNames.FirstOrDefault() ?? "_missing_collection";
     }
 
     private static DateTime StartOfWeek(DateTime date)
@@ -1992,6 +2569,12 @@ public sealed class FirestoreAdminDataService
                 {
                     bool b => b,
                     string s when bool.TryParse(s, out var parsed) => parsed,
+                    string s when s.Equals("active", StringComparison.OrdinalIgnoreCase) => true,
+                    string s when s.Equals("enabled", StringComparison.OrdinalIgnoreCase) => true,
+                    string s when s.Equals("available", StringComparison.OrdinalIgnoreCase) => true,
+                    string s when s.Equals("inactive", StringComparison.OrdinalIgnoreCase) => false,
+                    string s when s.Equals("disabled", StringComparison.OrdinalIgnoreCase) => false,
+                    string s when s.Equals("unavailable", StringComparison.OrdinalIgnoreCase) => false,
                     string s when s.Equals("yes", StringComparison.OrdinalIgnoreCase) => true,
                     string s when s.Equals("no", StringComparison.OrdinalIgnoreCase) => false,
                     int i => i != 0,

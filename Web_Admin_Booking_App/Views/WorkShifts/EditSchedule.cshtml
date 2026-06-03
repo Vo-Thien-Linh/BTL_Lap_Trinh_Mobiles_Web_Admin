@@ -1,0 +1,140 @@
+@model Web_Admin_Booking_App.Models.WorkScheduleEditViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Sửa lịch làm việc";
+}
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+        <h1 class="h4 fw-bold mb-1">Sửa lịch làm việc</h1>
+        <div class="text-secondary">Các thông tin hiện tại đã được điền sẵn. Chỉ đổi phần cần cập nhật.</div>
+    </div>
+    <a class="btn btn-light" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="list">Quay lại</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body">
+        <form asp-controller="WorkShifts" asp-action="EditSchedule" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+            <input asp-for="DocumentId" type="hidden" />
+            <input asp-for="RoomId" type="hidden" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="col-md-6">
+                <label asp-for="DoctorId" class="form-label"></label>
+                <select asp-for="DoctorId" class="form-select">
+                    <option value="">Chọn bác sĩ</option>
+                    @foreach (var doctor in Model.Doctors)
+                    {
+                        <option value="@doctor.Value">@doctor.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="DoctorId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="DepartmentId" class="form-label"></label>
+                <select asp-for="DepartmentId" class="form-select js-department-select" data-room-target="#RoomNumber">
+                    <option value="">Chọn khoa</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department.Value">@department.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="DepartmentId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="RoomNumber" class="form-label"></label>
+                <select asp-for="RoomNumber" class="form-select">
+                    <option value="">Chọn phòng</option>
+                    @foreach (var group in Model.DepartmentRooms)
+                    {
+                        foreach (var room in group.Value)
+                        {
+                            <option value="@room" data-department="@group.Key">@room</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="RoomNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="ShiftId" class="form-label"></label>
+                <select asp-for="ShiftId" class="form-select">
+                    <option value="">Chọn ca</option>
+                    @foreach (var shift in Model.Shifts)
+                    {
+                        <option value="@shift.Value">@shift.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="ShiftId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="ScheduleDate" class="form-label"></label>
+                <input asp-for="ScheduleDate" class="form-control" type="date" />
+                <span asp-validation-for="ScheduleDate" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="MaxSlots" class="form-label"></label>
+                <input asp-for="MaxSlots" class="form-control" type="number" min="1" max="100" />
+                <span asp-validation-for="MaxSlots" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="AvailableSlots" class="form-label"></label>
+                <input asp-for="AvailableSlots" class="form-control" type="number" min="0" max="100" />
+                <span asp-validation-for="AvailableSlots" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Lưu thay đổi</button>
+                <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="list">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            function renderRooms(select) {
+                const roomSelect = document.querySelector(select.dataset.roomTarget);
+                if (!roomSelect) return;
+
+                const selectedRoom = roomSelect.value;
+                const options = Array.from(roomSelect.querySelectorAll("option[data-department]"));
+                let visibleCount = 0;
+
+                options.forEach(option => {
+                    const visible = option.dataset.department === select.value;
+                    option.hidden = !visible;
+                    if (visible) visibleCount++;
+                });
+
+                const selectedOption = options.find(option => option.value === selectedRoom);
+                if (!selectedOption || selectedOption.hidden) {
+                    roomSelect.value = "";
+                }
+
+                roomSelect.disabled = visibleCount === 0;
+            }
+
+            document.querySelectorAll(".js-department-select").forEach(select => {
+                select.addEventListener("change", () => renderRooms(select));
+                renderRooms(select);
+            });
+        })();
+    </script>
+}

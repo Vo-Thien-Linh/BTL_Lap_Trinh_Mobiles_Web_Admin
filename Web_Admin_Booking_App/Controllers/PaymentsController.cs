@@ -49,6 +49,40 @@ public class PaymentsController : Controller
         return File(pdf, "application/pdf");
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkPaid(string id, string? sourceCollection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dataService.UpdatePaymentStatusAsync(id, sourceCollection, TransactionStatus.Paid, User.Identity?.Name ?? "staff", CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã xác nhận thanh toán.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(TransactionStatus.Pending) });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkFailed(string id, string? sourceCollection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dataService.UpdatePaymentStatusAsync(id, sourceCollection, TransactionStatus.Failed, User.Identity?.Name ?? "staff", CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã chuyển giao dịch sang thất bại.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(TransactionStatus.Pending) });
+    }
+
     private static string? ValidateFilters(
         string? search,
         string? sourceFilter,
