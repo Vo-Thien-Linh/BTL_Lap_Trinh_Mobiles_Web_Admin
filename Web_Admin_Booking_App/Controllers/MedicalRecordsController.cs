@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOrStaff")]
 public class MedicalRecordsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;

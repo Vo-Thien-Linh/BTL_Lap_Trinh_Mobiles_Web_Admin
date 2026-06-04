@@ -2,18 +2,21 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Sửa chuyên khoa";
+    ViewData["PageTitle"] = "Sửa chuyên khoa";
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-    <div>
-        <div class="eyebrow">Danh mục y tế</div>
-        <h1 class="page-title mb-1">Sửa chuyên khoa</h1>
-        <p class="text-secondary mb-0">Cập nhật thông tin chuyên khoa.</p>
+<section class="admin-form-page">
+    <div class="admin-page-header admin-page-header--compact">
+        <div>
+            <div class="admin-page-kicker">Chuyên khoa</div>
+            <h1 class="admin-page-title">Sửa chuyên khoa</h1>
+            <p class="admin-page-subtitle">Cập nhật thông tin chuyên khoa, nhân sự phụ trách và phòng khám.</p>
+        </div>
+        <a class="admin-action-btn" asp-controller="Specialties" asp-action="Index">Quay lại</a>
     </div>
-    <a class="btn btn-light" asp-controller="Specialties" asp-action="Index">Quay lại</a>
-</div>
 
-<partial name="_SpecialtyForm" model="Model" />
+    <partial name="_SpecialtyForm" model="Model" />
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

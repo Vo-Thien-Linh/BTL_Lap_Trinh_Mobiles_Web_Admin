@@ -2,112 +2,218 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Chi tiết bác sĩ";
+    ViewData["PageTitle"] = "Chi tiết bác sĩ";
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-    <div>
-        <div class="fw-bold fs-5">@Model.FullName</div>
-        <div class="text-secondary">
-            @if (!string.IsNullOrWhiteSpace(Model.Degree))
-            {
-                <span>@Model.Degree</span>
-                <span> - </span>
-            }
-            <span>@ValueOrDash(Model.Specialization ?? Model.Department)</span>
+<section class="admin-page admin-page--compact">
+    <div class="profile-hero">
+        <div class="profile-hero__content">
+            <div class="profile-hero__avatar">
+                @if (!string.IsNullOrWhiteSpace(Model.AvatarUrl))
+                {
+                    <img src="@Model.AvatarUrl" alt="@Model.FullName" />
+                }
+                else
+                {
+                    @Initials(Model.FullName)
+                }
+            </div>
+            <div class="min-w-0">
+                <div class="admin-page-kicker">Bác sĩ</div>
+                <h1 class="admin-page-title">@Model.FullName</h1>
+                <p class="admin-page-subtitle mb-2 text-break-soft">
+                    @ValueOrDash(Model.Email) · @ValueOrDash(Model.Specialization ?? Model.Department) · Mã hồ sơ: @ValueOrDash(Model.DocumentId)
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="@BadgeClass(Model.UserStatus)">@ValueOrDash(Model.UserStatus)</span>
+                    <span class="@BadgeClass(Model.VerificationStatus)">@ValueOrDash(Model.VerificationStatus)</span>
+                    <span class="soft-badge soft-badge--info">Email: @(Model.EmailVerified == true ? "Đã xác minh" : "Chưa xác minh")</span>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="d-flex gap-2">
-        <form asp-controller="Doctors" asp-action="Approve" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.DocumentId" />
-            <button class="btn btn-success" type="submit">Duyệt hồ sơ</button>
-        </form>
-        <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#rejectForm">
-            Từ chối
-        </button>
-        <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
-    </div>
-</div>
-
-@if (TempData["InfoMessage"] is string message)
-{
-    <div class="alert alert-info">@message</div>
-}
-
-<div class="collapse mb-3" id="rejectForm">
-    <div class="card panel-card">
-        <div class="card-body">
-            <form asp-controller="Doctors" asp-action="Reject" method="post" class="row g-2 align-items-end">
+        <div class="profile-hero__actions">
+            <form asp-controller="Doctors" asp-action="Approve" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@Model.DocumentId" />
-                <div class="col-md-9">
-                    <label class="form-label">Lý do từ chối</label>
-                    <input class="form-control" name="rejectReason" placeholder="VD: Chứng chỉ hành nghề chưa hợp lệ" />
-                </div>
-                <div class="col-md-3">
-                    <button class="btn btn-danger w-100" type="submit">Xác nhận từ chối</button>
-                </div>
+                <button class="btn btn-success" type="submit">Duyệt hồ sơ</button>
             </form>
+            <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#rejectForm">
+                Từ chối
+            </button>
+            <a class="btn btn-light" asp-controller="Doctors" asp-action="Index">Quay lại</a>
         </div>
     </div>
-</div>
 
-<div class="row g-3">
-    <div class="col-lg-5">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Hồ sơ</div>
-                <div class="d-grid gap-2">
-                    @FieldRows(Model.ProfileFields)
-                </div>
-            </div>
-        </div>
+    @if (TempData["InfoMessage"] is string message)
+    {
+        <div class="alert alert-info border-0 rounded-4">@message</div>
+    }
 
-        <div class="card panel-card mt-3">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Liên hệ</div>
-                <div class="d-grid gap-2">
-                    @FieldRows(Model.ContactFields)
-                </div>
-            </div>
-        </div>
-
-        <div class="card panel-card mt-3">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Quản trị</div>
-                <div class="d-grid gap-2">
-                    @FieldRows(Model.AdminFields)
-                </div>
+    <div class="collapse" id="rejectForm">
+        <div class="admin-form-card">
+            <div class="admin-form-card__body">
+                <form asp-controller="Doctors" asp-action="Reject" method="post" class="row g-3 align-items-end">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.DocumentId" />
+                    <div class="col-md-9">
+                        <label class="form-label">Lý do từ chối</label>
+                        <input class="form-control" name="rejectReason" placeholder="VD: Chứng chỉ hành nghề chưa hợp lệ" />
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-danger w-100" type="submit">Xác nhận từ chối</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-7">
-        <div class="card panel-card">
-            <div class="card-body">
-                <div class="fw-bold mb-2">Chuyên môn</div>
-                <div class="row g-3">
+    <div class="admin-detail-grid">
+        <aside class="admin-form-aside">
+            <section class="profile-meta-card section-accent--account">
+                <h2 class="profile-meta-card__title">Trạng thái hồ sơ</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="@BadgeClass(Model.UserStatus)">@ValueOrDash(Model.UserStatus)</span>
+                    <span class="@BadgeClass(Model.VerificationStatus)">@ValueOrDash(Model.VerificationStatus)</span>
+                    <span class="soft-badge soft-badge--info">@(Model.IsActive == true ? "Đang hiển thị" : "Không hiển thị")</span>
+                    @if (Model.IsFeatured == true)
+                    {
+                        <span class="soft-badge soft-badge--warning">Nổi bật@(Model.FeaturedRank.HasValue ? $" #{Model.FeaturedRank}" : string.Empty)</span>
+                    }
+                </div>
+            </section>
+
+            <section class="profile-meta-card section-accent--professional">
+                <h2 class="profile-meta-card__title">Liên hệ nhanh</h2>
+                <dl class="profile-meta-list">
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">Email</dt>
+                        <dd class="detail-value text-break-soft mb-0">@ValueOrDash(Model.Email)</dd>
+                    </div>
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">Số điện thoại</dt>
+                        <dd class="detail-value mb-0">@ValueOrDash(Model.Phone)</dd>
+                    </div>
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">Khoa</dt>
+                        <dd class="detail-value mb-0">@ValueOrDash(Model.Department)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="profile-meta-card section-accent--admin">
+                <h2 class="profile-meta-card__title">Thông tin kỹ thuật</h2>
+                <dl class="profile-meta-list">
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">Document ID</dt>
+                        <dd class="mb-0"><span class="technical-value">@ValueOrDash(Model.DocumentId)</span></dd>
+                    </div>
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">User ID</dt>
+                        <dd class="mb-0"><span class="technical-value">@ValueOrDash(Model.UserId)</span></dd>
+                    </div>
+                    <div class="profile-meta-list__row">
+                        <dt class="detail-label">Avatar path</dt>
+                        <dd class="mb-0"><span class="technical-value">@ValueOrDash(Model.AvatarUrl)</span></dd>
+                    </div>
+                </dl>
+            </section>
+        </aside>
+
+        <main class="detail-stack">
+            <section class="detail-card section-accent--professional">
+                <div class="detail-card__header">
+                    <div>
+                        <h2 class="detail-card__title">Hồ sơ chuyên môn</h2>
+                        <div class="detail-card__subtitle">Khoa, chuyên khoa, chứng chỉ, kinh nghiệm và phí khám.</div>
+                    </div>
+                </div>
+                <div class="detail-grid">
                     @FieldTiles(Model.ProfessionalFields)
                 </div>
-            </div>
-        </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Biography))
+                {
+                    <div class="soft-panel p-3 mt-3">
+                        <div class="detail-label">Giới thiệu</div>
+                        <div class="detail-value">@Model.Biography</div>
+                    </div>
+                }
+            </section>
+
+            <section class="detail-card section-accent--account">
+                <div class="detail-card__header">
+                    <div>
+                        <h2 class="detail-card__title">Thông tin cá nhân</h2>
+                        <div class="detail-card__subtitle">Các trường hồ sơ định danh không lặp lại phần hero.</div>
+                    </div>
+                </div>
+                <div class="detail-grid">
+                    @FieldTiles(Model.ProfileFields)
+                    @FieldTiles(Model.ContactFields)
+                </div>
+            </section>
+
+            <section class="detail-card section-accent--admin">
+                <div class="detail-card__header">
+                    <div>
+                        <h2 class="detail-card__title">Quản trị</h2>
+                        <div class="detail-card__subtitle">Vai trò, trạng thái tài khoản và duyệt hồ sơ.</div>
+                    </div>
+                </div>
+                <div class="detail-grid">
+                    @FieldTiles(Model.AdminFields)
+                    <div class="detail-field">
+                        <span class="detail-label">Email xác minh</span>
+                        <span class="detail-value">@(Model.EmailVerified == true ? "Đã xác minh" : "Chưa xác minh")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Nổi bật</span>
+                        <span class="detail-value">@(Model.IsFeatured == true ? $"Có{(Model.FeaturedRank.HasValue ? $" - hạng {Model.FeaturedRank}" : string.Empty)}" : "Không")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Ngày tạo</span>
+                        <span class="detail-value">@DateOrDash(Model.CreatedAt)</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Cập nhật gần nhất</span>
+                        <span class="detail-value">@DateOrDash(Model.UpdatedAt)</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="detail-card">
+                <div class="empty-state">
+                    <div class="empty-state__icon">i</div>
+                    <div class="fw-semibold">Chưa có lịch làm việc liên quan trong hồ sơ này</div>
+                    <div class="text-secondary small">Khi hệ thống trả dữ liệu lịch, khu vực này có thể hiển thị theo partial riêng.</div>
+                </div>
+            </section>
+        </main>
     </div>
-</div>
+</section>
 
 @functions {
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 
-    private static Microsoft.AspNetCore.Html.IHtmlContent FieldRows(
-        IReadOnlyList<Web_Admin_Booking_App.Models.DoctorDetailFieldViewModel> fields)
-    {
-        if (fields.Count == 0)
-        {
-            return new Microsoft.AspNetCore.Html.HtmlString("<div class=\"text-secondary\">Chưa có thông tin.</div>");
-        }
+    private static string DateOrDash(DateTime? value) => value.HasValue ? value.Value.ToString("dd/MM/yyyy HH:mm") : "-";
 
-        var rows = string.Join("", fields.Select(field =>
-            $"<div class=\"d-flex justify-content-between gap-3\"><span class=\"text-secondary\">{Encode(field.Label)}</span><span class=\"fw-semibold text-end text-break\">{Encode(field.Value)}</span></div>"));
-        return new Microsoft.AspNetCore.Html.HtmlString(rows);
+    private static string Initials(string name)
+    {
+        var parts = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "BS";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private static string BadgeClass(string? status)
+    {
+        var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("hoạt") || normalized.Contains("duyệt") || normalized.Contains("verified") || normalized.Contains("active"))
+            return "soft-badge soft-badge--success";
+        if (normalized.Contains("chờ") || normalized.Contains("pending") || normalized.Contains("draft"))
+            return "soft-badge soft-badge--warning";
+        if (normalized.Contains("từ") || normalized.Contains("khóa") || normalized.Contains("reject") || normalized.Contains("blocked"))
+            return "soft-badge soft-badge--danger";
+        return "soft-badge";
     }
 
     private static Microsoft.AspNetCore.Html.IHtmlContent FieldTiles(
@@ -115,11 +221,11 @@
     {
         if (fields.Count == 0)
         {
-            return new Microsoft.AspNetCore.Html.HtmlString("<div class=\"col-12 text-secondary\">Chưa có thông tin.</div>");
+            return new Microsoft.AspNetCore.Html.HtmlString("<div class=\"empty-state\"><div class=\"empty-state__icon\">i</div><div>Chưa có thông tin.</div></div>");
         }
 
         var tiles = string.Join("", fields.Select(field =>
-            $"<div class=\"col-md-6\"><div class=\"text-secondary small\">{Encode(field.Label)}</div><div class=\"fw-semibold text-break\">{Encode(field.Value)}</div></div>"));
+            $"<div class=\"detail-field\"><span class=\"detail-label\">{Encode(field.Label)}</span><span class=\"detail-value text-break-soft\">{Encode(field.Value)}</span></div>"));
         return new Microsoft.AspNetCore.Html.HtmlString(tiles);
     }
 

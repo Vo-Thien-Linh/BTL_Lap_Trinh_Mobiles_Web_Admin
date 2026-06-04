@@ -22,6 +22,24 @@
         PatientStatus.Blocked => "Bị khóa",
         _ => "Đang hoạt động"
     };
+
+    string InsuranceText(PatientListItemViewModel item) => item.HealthInsuranceStatus?.Trim().ToLowerInvariant() switch
+    {
+        "approved" => item.HealthInsuranceExpiryDate.HasValue ? "Đã duyệt" : "Đã duyệt - chưa có hạn thẻ",
+        "pending" => "Chờ xác minh",
+        "rejected" => "Từ chối",
+        "expired" => "Hết hạn",
+        _ => "Chưa có"
+    };
+
+    string InsuranceClass(PatientListItemViewModel item) => item.HealthInsuranceStatus?.Trim().ToLowerInvariant() switch
+    {
+        "approved" => "admin-pill admin-pill--active",
+        "pending" => "admin-pill admin-pill--pending",
+        "rejected" => "admin-pill admin-pill--failed",
+        "expired" => "admin-pill admin-pill--paused",
+        _ => "admin-pill"
+    };
 }
 
 <div class="card panel-card table-card">
@@ -66,14 +84,15 @@
                     <td class="text-center">@GenderText(item.Gender)</td>
                     <td class="text-center">@(item.Dob?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</td>
                     <td class="text-center">
-                        @if (string.IsNullOrWhiteSpace(item.HealthInsuranceNumber))
-                            {
-                        <span class="admin-pill admin-pill--pending">Chưa có</span>
-                            }
-                            else
-                            {
-                        <span class="admin-pill admin-pill--info">@item.HealthInsuranceNumber</span>
-                            }
+                        <div><span class="@InsuranceClass(item)">@InsuranceText(item)</span></div>
+                        @if (!string.IsNullOrWhiteSpace(item.HealthInsuranceNumber))
+                        {
+                            <div class="subtle-text text-break-soft mt-1">@item.HealthInsuranceNumber</div>
+                        }
+                        @if (item.HasPendingInsuranceRequest)
+                        {
+                            <a class="small text-decoration-none" asp-controller="InsuranceApprovals" asp-action="Index" asp-route-search="@item.Code">Xem yêu cầu BHYT</a>
+                        }
                     </td>
                     <td class="text-center"><span class="@StatusClass(item.Status)">@StatusText(item.Status)</span></td>
                     <td class="text-end">

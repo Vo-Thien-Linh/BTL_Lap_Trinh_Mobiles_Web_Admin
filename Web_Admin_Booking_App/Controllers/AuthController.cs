@@ -23,9 +23,9 @@ public class AuthController : Controller
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
-        if (User.Identity?.IsAuthenticated == true && User.IsInRole("admin"))
+        if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Home");
+            return RedirectToRoleHome();
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -50,20 +50,21 @@ public class AuthController : Controller
             var adminUser = await _adminUserService.GetAdminUserAsync(authResult.LocalId);
 
             if (adminUser == null ||
-                !string.Equals(adminUser.Role, "admin", StringComparison.OrdinalIgnoreCase) ||
+                !IsAllowedWebRole(adminUser.Role) ||
                 !string.Equals(adminUser.Status, "active", StringComparison.OrdinalIgnoreCase))
             {
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return RedirectToAction(nameof(AccessDenied));
             }
 
+            var normalizedRole = NormalizeRole(adminUser.Role);
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, adminUser.Uid),
                 new(ClaimTypes.Email, string.IsNullOrWhiteSpace(adminUser.Email) ? model.Email : adminUser.Email),
                 new(ClaimTypes.Name, string.IsNullOrWhiteSpace(adminUser.FullName) ? model.Email : adminUser.FullName),
-                new(ClaimTypes.Role, "admin"),
-                new("role", "admin")
+                new(ClaimTypes.Role, normalizedRole),
+                new("role", normalizedRole)
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -83,7 +84,7 @@ public class AuthController : Controller
                 return Redirect(returnUrl);
             }
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToRoleHome(normalizedRole);
         }
         catch (Exception ex)
         {
@@ -127,6 +128,35 @@ public class AuthController : Controller
     public IActionResult AccessDenied()
     {
         return View();
+    }
+
+    private IActionResult RedirectToRoleHome(string? role = null)
+    {
+        role ??= User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role");
+        return NormalizeRole(role) switch
+        {
+            "staff" => RedirectToAction("StaffDashboard", "Home"),
+            "admin" => RedirectToAction("Index", "Home"),
+            _ => RedirectToAction(nameof(AccessDenied))
+        };
+    }
+
+    private static bool IsAllowedWebRole(string? role)
+    {
+        return NormalizeRole(role) is "admin" or "staff";
+    }
+
+    private static string NormalizeRole(string? role)
+    {
+        return role?.Trim().ToLowerInvariant() switch
+        {
+            "cashier" or "receptionist" or "staff_manager" => "staff",
+            "admin" => "admin",
+            "staff" => "staff",
+            "doctor" => "doctor",
+            "patient" => "patient",
+            _ => string.Empty
+        };
     }
 
     [HttpPost]

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Grpc.Core;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOrStaff")]
 public class AppointmentsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;
@@ -92,6 +94,7 @@ public class AppointmentsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> ApproveCancel(string id, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();
@@ -114,6 +117,31 @@ public class AppointmentsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> RejectCancel(string id, string? rejectReason, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+        try
+        {
+            await _dataService.RejectAppointmentCancelRequestAsync(
+                id,
+                User.Identity?.Name ?? "admin",
+                rejectReason,
+                CancellationToken.None);
+            TempData["InfoMessage"] = "Đã từ chối yêu cầu hủy lịch.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(AppointmentStatus.CancelRequested) });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> MarkCompleted(string id, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();
@@ -135,6 +163,7 @@ public class AppointmentsController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var vm = new AppointmentCreateViewModel
@@ -149,11 +178,12 @@ public class AppointmentsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> Create(AppointmentCreateViewModel model, CancellationToken cancellationToken)
     {
         if (model.Date < DateOnly.FromDateTime(DateTime.Today))
         {
-            ModelState.AddModelError(nameof(model.Date), "Khong duoc chon ngay kham trong qua khu.");
+            ModelState.AddModelError(nameof(model.Date), "Không được chọn ngày khám trong quá khứ.");
         }
 
         if (!ModelState.IsValid)
@@ -163,7 +193,7 @@ public class AppointmentsController : Controller
         }
 
         await _dataService.CreateAppointmentAsync(model, cancellationToken);
-        TempData["SuccessMessage"] = "Da luu lich hen moi.";
+        TempData["SuccessMessage"] = "Đã lưu lịch hẹn mới.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -189,6 +219,8 @@ public class AppointmentsController : Controller
                 x.AppointmentCode.ToLowerInvariant().Contains(key) ||
                 x.Id.ToLowerInvariant().Contains(key) ||
                 x.DocumentId.ToLowerInvariant().Contains(key) ||
+                x.PatientCode.ToLowerInvariant().Contains(key) ||
+                x.DoctorCode.ToLowerInvariant().Contains(key) ||
                 x.PatientName.ToLowerInvariant().Contains(key) ||
                 x.PatientPhone.ToLowerInvariant().Contains(key) ||
                 x.PatientEmail.ToLowerInvariant().Contains(key) ||

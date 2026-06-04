@@ -2,20 +2,53 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Bác sĩ";
+
+    var totalDoctors = Model.Count;
+    var activeDoctors = Model.Count(d => d.IsActive == true || IsStatus(d.UserStatus, "active", "đang hoạt động"));
+    var pendingDoctors = Model.Count(d => IsStatus(d.VerificationStatus, "pending", "chờ duyệt", "bản nháp"));
+    var verifiedDoctors = Model.Count(d => d.EmailVerified == true || IsStatus(d.VerificationStatus, "verified", "đã duyệt", "đã xác minh"));
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+<div class="admin-page-header admin-page-header--compact">
     <div>
-        <div class="fw-bold fs-5">Danh sách bác sĩ</div>
-        <div class="text-secondary">Quản lý thông tin và trạng thái làm việc</div>
+        <div class="admin-page-kicker">Bác sĩ</div>
+        <h1 class="admin-page-title">Danh sách bác sĩ</h1>
+        <p class="admin-page-subtitle">Quản lý thông tin, chuyên môn và trạng thái hiển thị của bác sĩ.</p>
     </div>
-    <a class="btn btn-primary" asp-controller="Doctors" asp-action="Create">Thêm bác sĩ</a>
+    <a class="admin-action-btn admin-action-btn--primary" asp-controller="Doctors" asp-action="Create">Thêm bác sĩ</a>
 </div>
 
-<div class="card panel-card">
+<div class="doctor-stat-grid mb-3">
+    <div class="admin-stat-card doctor-stat-card doctor-stat-card--total">
+        <div class="doctor-stat-card__icon">BS</div>
+        <div class="admin-stat-card__label">Tổng bác sĩ</div>
+        <div class="admin-stat-card__value">@totalDoctors</div>
+        <div class="admin-stat-card__hint">Tất cả hồ sơ</div>
+    </div>
+    <div class="admin-stat-card doctor-stat-card doctor-stat-card--active">
+        <div class="doctor-stat-card__icon">ON</div>
+        <div class="admin-stat-card__label">Đang hoạt động</div>
+        <div class="admin-stat-card__value">@activeDoctors</div>
+        <div class="admin-stat-card__hint">Có thể hiển thị</div>
+    </div>
+    <div class="admin-stat-card doctor-stat-card doctor-stat-card--pending">
+        <div class="doctor-stat-card__icon">...</div>
+        <div class="admin-stat-card__label">Chờ duyệt</div>
+        <div class="admin-stat-card__value">@pendingDoctors</div>
+        <div class="admin-stat-card__hint">Cần kiểm tra</div>
+    </div>
+    <div class="admin-stat-card doctor-stat-card doctor-stat-card--verified">
+        <div class="doctor-stat-card__icon">OK</div>
+        <div class="admin-stat-card__label">Đã xác minh</div>
+        <div class="admin-stat-card__value">@verifiedDoctors</div>
+        <div class="admin-stat-card__hint">Email hoặc hồ sơ</div>
+    </div>
+</div>
+
+<div class="card panel-card admin-table-card">
     <div class="card-body">
         <div class="row g-2 align-items-center">
-            <div class="col-md-6">
+            <div class="col-lg-7">
                 <div class="input-group">
                     <span class="input-group-text bg-white" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -26,87 +59,116 @@
                     <input class="form-control" type="search" placeholder="Tìm theo tên, email, số điện thoại, chuyên khoa..." />
                 </div>
             </div>
-            <div class="col-md-6 text-md-end">
-                <span class="text-secondary small">Tổng: @Model.Count bác sĩ</span>
+            <div class="col-lg-5 text-lg-end">
+                <span class="text-secondary small">Tổng số: <strong class="text-dark">@Model.Count</strong> bác sĩ</span>
             </div>
         </div>
 
-        <div class="table-responsive mt-3">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr class="text-secondary">
-                        <th style="min-width: 260px;">Tài khoản</th>
-                        <th style="min-width: 220px;">Hồ sơ bác sĩ</th>
-                        <th style="min-width: 180px;">Hành nghề</th>
-                        <th>Phí khám</th>
-                        <th style="min-width: 160px;">Trạng thái</th>
-                        <th class="text-end">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var d in Model)
-                {
-                    <tr>
-                        <td>
-                            <div class="person-cell">
-                                <div class="avatar">@Initials(d.FullName)</div>
-                                <div>
-                                    <div class="fw-semibold">@d.FullName</div>
-                                    @if (!string.IsNullOrWhiteSpace(d.Email))
-                                    {
-                                        <div class="text-secondary small text-break">@d.Email</div>
-                                    }
-                                    <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Phone) ? "Chưa có số điện thoại" : d.Phone)</div>
+        @if (Model.Count == 0)
+        {
+            <div class="empty-state py-5">
+                <div class="empty-state__icon">+</div>
+                <div class="fw-semibold">Chưa có hồ sơ bác sĩ</div>
+                <div class="text-secondary small">Tạo hồ sơ đầu tiên để quản lý lịch khám và trạng thái duyệt.</div>
+                <a class="btn btn-primary mt-3" asp-controller="Doctors" asp-action="Create">Thêm bác sĩ</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive mt-3">
+                <table class="table table-hover align-middle mb-0 admin-table">
+                    <thead>
+                        <tr class="text-secondary">
+                            <th style="min-width: 260px;">Tài khoản</th>
+                            <th style="min-width: 220px;">Hồ sơ bác sĩ</th>
+                            <th style="min-width: 180px;">Hành nghề</th>
+                            <th>Phí khám</th>
+                            <th style="min-width: 170px;">Trạng thái</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var d in Model)
+                    {
+                        <tr>
+                            <td>
+                                    <div class="doctor-account-cell">
+                                    <div class="doctor-avatar">
+                                        @if (!string.IsNullOrWhiteSpace(d.AvatarUrl))
+                                        {
+                                            <img src="@d.AvatarUrl" alt="@d.FullName" />
+                                        }
+                                        else
+                                        {
+                                            @Initials(d.FullName)
+                                        }
+                                    </div>
+                                    <div class="doctor-account-meta">
+                                        <div class="doctor-name">@ValueOrDash(d.FullName)</div>
+                                        @if (!string.IsNullOrWhiteSpace(d.Email))
+                                        {
+                                            <div class="doctor-subtext text-break-soft">@d.Email</div>
+                                        }
+                                        <div class="doctor-subtext">@(string.IsNullOrWhiteSpace(d.Phone) ? "Chưa có số điện thoại" : d.Phone)</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(d.Department) ? "-" : d.Department)</div>
-                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Specialization) ? "Chưa có chuyên khoa" : d.Specialization)</div>
-                            <div class="text-secondary small">Mã hồ sơ: #@d.DocumentId</div>
-                        </td>
-                        <td>
-                            <div>@(string.IsNullOrWhiteSpace(d.LicenseNumber) ? "-" : d.LicenseNumber)</div>
-                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.Degree) ? "Chưa có học vị" : d.Degree)</div>
-                            <div class="text-secondary small">@(string.IsNullOrWhiteSpace(d.YearsOfExperience) ? "Chưa có kinh nghiệm" : d.YearsOfExperience)</div>
-                        </td>
-                        <td class="text-secondary">@(string.IsNullOrWhiteSpace(d.ConsultationFee) ? "-" : d.ConsultationFee)</td>
-                        <td>
-                            <div><span class="badge @StatusBadge(d.UserStatus)">@ValueOrDash(d.UserStatus)</span></div>
-                            <div class="mt-1"><span class="badge @StatusBadge(d.VerificationStatus)">@ValueOrDash(d.VerificationStatus)</span></div>
-                            <div class="text-secondary small mt-1">Hoạt động: @(d.IsActive == true ? "Có" : "Không")</div>
-                            <div class="text-secondary small mt-1">Nổi bật: @(d.IsFeatured == true ? $"Có{(d.FeaturedRank.HasValue ? $" - hạng {d.FeaturedRank}" : string.Empty)}" : "Không")</div>
-                        </td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-light" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.DocumentId">Xem</a>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@ValueOrDash(d.Department)</div>
+                                <div class="text-secondary small">@(!string.IsNullOrWhiteSpace(d.Specialization) ? d.Specialization : "Chưa có chuyên khoa")</div>
+                                <div class="text-secondary small">Mã bác sĩ: <span class="technical-value">@d.DoctorCode</span></div>
+                            </td>
+                            <td>
+                                <div>@ValueOrDash(d.LicenseNumber)</div>
+                                <div class="text-secondary small">@(!string.IsNullOrWhiteSpace(d.Degree) ? d.Degree : "Chưa có học vị")</div>
+                                <div class="text-secondary small">@(!string.IsNullOrWhiteSpace(d.YearsOfExperience) ? d.YearsOfExperience : "Chưa có kinh nghiệm")</div>
+                            </td>
+                            <td class="text-secondary text-center">@ValueOrDash(d.ConsultationFee)</td>
+                            <td>
+                                <div><span class="@StatusBadge(d.UserStatus)">@ValueOrDash(d.UserStatus)</span></div>
+                                <div class="mt-1"><span class="@StatusBadge(d.VerificationStatus)">@ValueOrDash(d.VerificationStatus)</span></div>
+                                <div class="text-secondary small mt-1">Hoạt động: @(d.IsActive == true ? "Có" : "Không")</div>
+                                <div class="text-secondary small mt-1">Nổi bật: @(d.IsFeatured == true ? $"Có{(d.FeaturedRank.HasValue ? $" - hạng {d.FeaturedRank}" : string.Empty)}" : "Không")</div>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm action-btn-soft" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.DocumentId">Xem</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 
 @functions {
     private static string Initials(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "";
+        if (string.IsNullOrWhiteSpace(name)) return "BS";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return "";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpperInvariant();
-        var first = parts[0].Substring(0, 1).ToUpperInvariant();
-        var last = parts[^1].Substring(0, 1).ToUpperInvariant();
-        return first + last;
+        if (parts.Length == 0) return "BS";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
 
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 
-    private static string StatusBadge(string? status) => status switch
+    private static bool IsStatus(string? value, params string[] tokens)
     {
-        "Đang hoạt động" or "Đã duyệt" => "text-bg-primary",
-        "Chờ kích hoạt" or "Chờ duyệt" or "Bản nháp" => "text-bg-warning",
-        "Đã khóa" or "Từ chối" => "text-bg-secondary",
-        _ => "text-bg-light"
-    };
+        var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
+        return tokens.Any(token => normalized.Contains(token.ToLowerInvariant()));
+    }
+
+    private static string StatusBadge(string? status)
+    {
+        var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("hoạt") || normalized.Contains("duyệt") || normalized.Contains("verified") || normalized.Contains("active"))
+            return "soft-badge soft-badge--success";
+        if (normalized.Contains("chờ") || normalized.Contains("pending") || normalized.Contains("draft"))
+            return "soft-badge soft-badge--warning";
+        if (normalized.Contains("từ") || normalized.Contains("khóa") || normalized.Contains("reject") || normalized.Contains("blocked"))
+            return "soft-badge soft-badge--danger";
+        return "soft-badge";
+    }
 }

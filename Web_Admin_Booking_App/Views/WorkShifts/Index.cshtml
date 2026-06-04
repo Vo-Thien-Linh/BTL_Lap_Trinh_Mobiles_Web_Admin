@@ -1,7 +1,8 @@
 @model Web_Admin_Booking_App.Models.WorkShiftsIndexViewModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Lịch làm việc";
+    ViewData["Title"] = "Cấu hình ca chuẩn";
+    var isAdmin = User.IsInRole("admin");
     var isCalendar = string.Equals(Model.Mode, "calendar", StringComparison.OrdinalIgnoreCase);
     var previousWeek = Model.WeeklyTable.WeekStart.AddDays(-7);
     var nextWeek = Model.WeeklyTable.WeekStart.AddDays(7);
@@ -9,13 +10,10 @@
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
     <div>
-        <h1 class="h4 fw-bold mb-1">Quản lý lịch làm việc</h1>
-        <div class="text-secondary">Phân lịch theo mẫu tuần, sinh lịch thực tế và bật/tắt lịch đặt khám.</div>
+        <h1 class="h4 fw-bold mb-1">Cấu hình ca chuẩn</h1>
+        <div class="text-secondary">Theo dõi khung ca, phòng khám và lịch tuần. Phân công lịch bác sĩ hằng ngày do Staff xử lý.</div>
     </div>
-    <div class="btn-group" role="group" aria-label="Chế độ xem">
-        <a class="btn btn-sm @(isCalendar ? "btn-primary" : "btn-outline-secondary")" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar" asp-route-weekStart="@Model.WeeklyTable.WeekStart.ToString("yyyy-MM-dd")">Lịch</a>
-        <a class="btn btn-sm @(!isCalendar ? "btn-primary" : "btn-outline-secondary")" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="list" asp-route-weekStart="@Model.WeeklyTable.WeekStart.ToString("yyyy-MM-dd")">Danh sách</a>
-    </div>
+    <span class="badge text-bg-light border">Admin chỉ xem/cấu hình ca chuẩn</span>
 </div>
 
 @if (TempData["InfoMessage"] is string message)
@@ -62,6 +60,8 @@
     </div>
 </div>
 
+@if (!isAdmin)
+{
 <form class="card panel-card mb-3" asp-controller="WorkShifts" asp-action="Generate" method="post">
     @Html.AntiForgeryToken()
     <div class="card-body">
@@ -148,6 +148,7 @@
         </div>
     </div>
 </form>
+}
 
 @if (isCalendar)
 {

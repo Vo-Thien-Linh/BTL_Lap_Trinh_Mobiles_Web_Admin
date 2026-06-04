@@ -38,6 +38,9 @@ public sealed class PatientIndexViewModel
     public int ActiveCount { get; set; }
     public int MissingInsuranceCount { get; set; }
     public int PendingInsuranceCount { get; set; }
+    public int ApprovedInsuranceCount { get; set; }
+    public int RejectedInsuranceCount { get; set; }
+    public int ExpiredInsuranceCount { get; set; }
     public int HasInsuranceCount => Math.Max(0, TotalCount - MissingInsuranceCount);
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)Math.Max(1, PageSize)));
     public List<PatientListItemViewModel> Items { get; set; } = new();
@@ -54,10 +57,19 @@ public sealed class PatientListItemViewModel
     public DateOnly? Dob { get; set; }
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public string HealthInsuranceNumber { get; set; } = string.Empty;
+    public string PendingHealthInsuranceNumber { get; set; } = string.Empty;
+    public string InsuranceCode { get; set; } = string.Empty;
     public string HealthInsuranceStatus { get; set; } = string.Empty;
+    public DateOnly? HealthInsuranceExpiryDate { get; set; }
+    public int? InsuranceCoveragePercent { get; set; }
     public string HealthInsuranceRejectReason { get; set; } = string.Empty;
     public string Cccd { get; set; } = string.Empty;
     public DateTime? CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    public bool HasPendingInsuranceRequest =>
+        string.Equals(HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase) ||
+        !string.IsNullOrWhiteSpace(PendingHealthInsuranceNumber);
 
     public string AvatarText
     {
@@ -88,7 +100,11 @@ public sealed class PatientDetailsViewModel
     public string Allergy { get; set; } = string.Empty;
     public string ChronicDisease { get; set; } = string.Empty;
     public string HealthInsuranceNumber { get; set; } = string.Empty;
+    public string PendingHealthInsuranceNumber { get; set; } = string.Empty;
+    public string InsuranceCode { get; set; } = string.Empty;
     public string HealthInsuranceStatus { get; set; } = string.Empty;
+    public DateOnly? HealthInsuranceExpiryDate { get; set; }
+    public int? InsuranceCoveragePercent { get; set; }
     public string HealthInsuranceRejectReason { get; set; } = string.Empty;
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public DateTime? CreatedAt { get; set; }
@@ -96,6 +112,10 @@ public sealed class PatientDetailsViewModel
     public DateTime? LastVisitAt { get; set; }
     public string Notes { get; set; } = string.Empty;
     public List<PatientAppointmentSummaryViewModel> RecentAppointments { get; set; } = new();
+
+    public bool HasPendingInsuranceRequest =>
+        string.Equals(HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase) ||
+        !string.IsNullOrWhiteSpace(PendingHealthInsuranceNumber);
 
     public string AvatarText
     {
@@ -118,4 +138,29 @@ public sealed class PatientAppointmentSummaryViewModel
     public DateTime? AppointmentDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Symptoms { get; set; } = string.Empty;
+}
+
+public sealed class InsuranceApprovalIndexViewModel
+{
+    public string? Search { get; set; }
+    public string? FilterError { get; set; }
+    public int PendingCount { get; set; }
+    public int ApprovedCount { get; set; }
+    public int RejectedCount { get; set; }
+    public int ExpiredCount { get; set; }
+    public List<InsuranceApprovalListItemViewModel> Items { get; set; } = new();
+}
+
+public sealed class InsuranceApprovalListItemViewModel
+{
+    public string PatientId { get; set; } = string.Empty;
+    public string InsuranceCode { get; set; } = string.Empty;
+    public string PatientCode { get; set; } = string.Empty;
+    public string PatientName { get; set; } = "Chưa có tên";
+    public string Phone { get; set; } = string.Empty;
+    public string CurrentInsuranceNumber { get; set; } = string.Empty;
+    public string PendingInsuranceNumber { get; set; } = string.Empty;
+    public DateTime? SubmittedAt { get; set; }
+    public string Status { get; set; } = "pending";
+    public string RejectReason { get; set; } = string.Empty;
 }

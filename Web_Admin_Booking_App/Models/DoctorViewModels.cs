@@ -7,6 +7,7 @@ public class DoctorListItemViewModel
 {
     public string Id { get; set; } = string.Empty;
     public string DocumentId { get; set; } = string.Empty;
+    public string DoctorCode { get; set; } = string.Empty;
     public string? UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
@@ -105,8 +106,8 @@ public class DoctorCreateViewModel
     [Display(Name = "Bác sĩ nổi bật")]
     public bool IsFeatured { get; set; }
 
-    [Range(1, 999, ErrorMessage = "Thá»© háº¡ng ná»•i báº­t pháº£i tá»« 1 Ä‘áº¿n 999.")]
-    [Display(Name = "Thá»© háº¡ng ná»•i báº­t")]
+    [Range(1, 999, ErrorMessage = "Thứ hạng nổi bật phải từ 1 đến 999.")]
+    [Display(Name = "Thứ hạng nổi bật")]
     public int? FeaturedRank { get; set; }
 
     [Display(Name = "Trạng thái duyệt hồ sơ")]

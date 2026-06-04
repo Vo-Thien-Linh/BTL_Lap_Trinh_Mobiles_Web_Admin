@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOnly")]
 public class WorkShiftsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;
@@ -15,7 +17,7 @@ public class WorkShiftsController : Controller
 
     public async Task<IActionResult> Index(string? mode = null, DateOnly? weekStart = null, CancellationToken cancellationToken = default)
     {
-        var model = await _dataService.GetWorkShiftsAsync(mode, weekStart, CancellationToken.None);
+        var model = await _dataService.GetWorkShiftsAsync("calendar", weekStart, CancellationToken.None);
         return View(model);
     }
 

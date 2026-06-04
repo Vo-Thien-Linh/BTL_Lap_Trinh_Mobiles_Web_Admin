@@ -1,0 +1,76 @@
+@model Web_Admin_Booking_App.Models.StaffIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quản lý nhân viên";
+}
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <div class="fw-bold fs-5">Quản lý nhân viên</div>
+        <div class="text-secondary">Admin tạo tài khoản nhân viên với role cố định là staff.</div>
+    </div>
+    <a class="btn btn-primary" asp-controller="Staff" asp-action="Create">Tạo nhân viên</a>
+</div>
+
+<div class="card panel-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr class="text-secondary">
+                        <th>Nhân viên</th>
+                        <th>Email</th>
+                        <th>Số điện thoại</th>
+                        <th>Role</th>
+                        <th>Vị trí công việc</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="empty-state">Chưa có tài khoản nhân viên.</td></tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="person-cell">
+                                    <div class="avatar">@Initials(item.FullName)</div>
+                                    <div>
+                                        <div class="fw-semibold">@item.FullName</div>
+                                        <div class="text-secondary small">@item.StaffCode</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@ValueOrDash(item.Email)</td>
+                            <td>@ValueOrDash(item.Phone)</td>
+                            <td><span class="admin-pill admin-pill--pending">@RoleText(item.Role)</span></td>
+                            <td>@ValueOrDash(item.Position)</td>
+                            <td><span class="admin-pill @(item.Status == "active" ? "admin-pill--paid" : "admin-pill--paused")">@StatusText(item.Status)</span></td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "NV";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
+    }
+
+    private static string RoleText(string role) => role == "staff" ? "Nhân viên" : "-";
+
+    private static string StatusText(string status) => status == "active" ? "Đang hoạt động" : "Tạm khóa";
+}

@@ -1,9 +1,11 @@
 using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web_Admin_Booking_App.Models;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOnly")]
 public sealed class SpecialtiesController : Controller
 {
     private readonly FirestoreDb _firestore;

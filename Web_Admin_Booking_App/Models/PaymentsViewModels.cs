@@ -21,8 +21,13 @@ public class TransactionListItemViewModel
     public string Id { get; set; } = string.Empty;
     public string SourceCollection { get; set; } = string.Empty;
     public string InvoiceCode { get; set; } = string.Empty;
+    public string AppointmentCode { get; set; } = string.Empty;
+    public string PatientCode { get; set; } = string.Empty;
     public string PatientName { get; set; } = string.Empty;
+    public string PatientPhone { get; set; } = string.Empty;
     public string ServiceName { get; set; } = string.Empty;
+    public decimal OriginalAmountVnd { get; set; }
+    public decimal InsuranceSupportVnd { get; set; }
     public decimal AmountVnd { get; set; }
     public DateTime PaidAt { get; set; }
     public PaymentMethod Method { get; set; }

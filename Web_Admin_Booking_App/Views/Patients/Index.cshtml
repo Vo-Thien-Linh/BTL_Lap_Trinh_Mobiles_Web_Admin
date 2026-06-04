@@ -24,21 +24,21 @@
         <small>Tài khoản có thể sử dụng hệ thống</small>
     </div>
     <div class="admin-stat-card">
-        <span class="admin-stat-card__label">Thiếu BHYT</span>
-        <strong>@Model.MissingInsuranceCount</strong>
-        <small>Cần nhắc bệnh nhân cập nhật</small>
+        <span class="admin-stat-card__label">Chờ xác minh BHYT</span>
+        <strong>@Model.PendingInsuranceCount</strong>
+        <small>Hồ sơ cần nhân viên xét duyệt</small>
     </div>
     <div class="admin-stat-card">
-        <span class="admin-stat-card__label">Chờ duyệt BHYT</span>
-        <strong>@Model.PendingInsuranceCount</strong>
-        <small>Hồ sơ cần admin xét duyệt</small>
+        <span class="admin-stat-card__label">Đã duyệt BHYT</span>
+        <strong>@Model.ApprovedInsuranceCount</strong>
+        <small>Có thể áp dụng khi đủ điều kiện thanh toán</small>
     </div>
 </div>
 
 <form id="patientFilterForm" asp-controller="Patients" asp-action="Index" method="get" class="filter-toolbar mb-3">
     <div class="filter-search">
         <span>⌕</span>
-        <input name="search" value="@Model.Search" class="form-control" autocomplete="off" placeholder="Tìm theo tên, SĐT, email, mã bệnh nhân, BHYT..." />
+        <input name="search" value="@Model.Search" class="form-control" autocomplete="off" placeholder="Tìm theo mã bệnh nhân, họ tên, SĐT, email, CCCD, mã BHYT..." />
     </div>
     <select name="genderFilter" class="form-select filter-select">
         <option value="">Tất cả giới tính</option>
@@ -55,10 +55,11 @@
     </select>
     <select name="insuranceFilter" class="form-select filter-select">
         <option value="">Tất cả BHYT</option>
-        <option value="pending" selected="@(Model.InsuranceFilter == "pending")">Chờ duyệt BHYT</option>
-        <option value="approved" selected="@(Model.InsuranceFilter == "approved")">Đã duyệt BHYT</option>
-        <option value="rejected" selected="@(Model.InsuranceFilter == "rejected")">Từ chối BHYT</option>
-        <option value="missing" selected="@(Model.InsuranceFilter == "missing")">Thiếu BHYT</option>
+        <option value="pending" selected="@(Model.InsuranceFilter == "pending")">Chờ xác minh</option>
+        <option value="approved" selected="@(Model.InsuranceFilter == "approved")">Đã duyệt</option>
+        <option value="rejected" selected="@(Model.InsuranceFilter == "rejected")">Từ chối</option>
+        <option value="expired" selected="@(Model.InsuranceFilter == "expired")">Hết hạn</option>
+        <option value="missing" selected="@(Model.InsuranceFilter == "missing")">Chưa có</option>
     </select>
     <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")" data-filter-error>
         @Model.FilterError

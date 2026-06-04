@@ -3,8 +3,160 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Chi tiết bệnh nhân";
+    ViewData["PageTitle"] = "Chi tiết bệnh nhân";
+    var primaryContact = !string.IsNullOrWhiteSpace(Model.Email) ? Model.Email : Model.Phone;
 }
+
+<section class="profile-hero mb-4">
+    <div class="profile-hero__content">
+        <div class="profile-hero__avatar">@Model.AvatarText</div>
+        <div class="min-w-0">
+            <div class="admin-page-kicker">Bệnh nhân</div>
+            <h1 class="admin-page-title">@Model.FullName</h1>
+            <p class="admin-page-subtitle mb-2 text-break-soft">
+                @TextOrDefault(primaryContact) · Mã bệnh nhân: @Model.Code
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="@StatusBadge(Model.Status)">@StatusText(Model.Status)</span>
+                <span class="@InsuranceBadge(Model.HealthInsuranceStatus)">BHYT: @InsuranceStatusText(Model.HealthInsuranceStatus)</span>
+            </div>
+        </div>
+    </div>
+    <div class="profile-hero__actions">
+        <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại danh sách</a>
+    </div>
+</section>
+
+@if (Model.HasPendingInsuranceRequest)
+{
+    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <strong>Bệnh nhân có yêu cầu BHYT chờ duyệt.</strong>
+            <div class="small">Mã chờ duyệt: @TextOrDefault(Model.PendingHealthInsuranceNumber)</div>
+        </div>
+        <a class="btn btn-sm btn-warning" asp-controller="InsuranceApprovals" asp-action="Index" asp-route-search="@Model.Code">Xem yêu cầu BHYT</a>
+    </div>
+}
+
+<div class="patient-detail-grid">
+    <aside class="profile-summary-card profile-summary-card--compact">
+        <h2>Thông tin nhanh</h2>
+        <div class="summary-item"><span>Ngày tạo hồ sơ</span><strong>@(Model.CreatedAt?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong></div>
+        <div class="summary-item"><span>Cập nhật gần nhất</span><strong>@(Model.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</strong></div>
+        <div class="summary-item"><span>Nguồn hồ sơ</span><strong>Flutter/Web</strong></div>
+        <div class="summary-item"><span>Ghi chú hệ thống</span><strong>@TextOrDefault(Model.Notes)</strong></div>
+    </aside>
+
+    <main class="detail-stack">
+        <section class="detail-card section-accent--account">
+            <div class="detail-card__header">
+                <div>
+                    <h2 class="detail-card__title">Thông tin cá nhân</h2>
+                    <div class="detail-card__subtitle">Thông tin định danh của bệnh nhân.</div>
+                </div>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field"><span class="detail-label">CCCD</span><span class="detail-value">@TextOrDefault(Model.Cccd)</span></div>
+                <div class="detail-field"><span class="detail-label">Ngày sinh</span><span class="detail-value">@(Model.Dob?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</span></div>
+                <div class="detail-field"><span class="detail-label">Giới tính</span><span class="detail-value">@GenderText(Model.Gender)</span></div>
+                <div class="detail-field"><span class="detail-label">Tên đăng nhập</span><span class="detail-value text-break-soft">@TextOrDefault(Model.Username)</span></div>
+            </div>
+        </section>
+
+        <section class="detail-card">
+            <div class="detail-card__header">
+                <div>
+                    <h2 class="detail-card__title">Thông tin liên hệ</h2>
+                    <div class="detail-card__subtitle">Số điện thoại, email và địa chỉ.</div>
+                </div>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field"><span class="detail-label">Số điện thoại</span><span class="detail-value">@TextOrDefault(Model.Phone)</span></div>
+                <div class="detail-field"><span class="detail-label">Email</span><span class="detail-value text-break-soft">@TextOrDefault(Model.Email)</span></div>
+                <div class="detail-field is-full"><span class="detail-label">Địa chỉ</span><span class="detail-value">@TextOrDefault(Model.Address)</span></div>
+            </div>
+        </section>
+
+        <section class="detail-card section-accent--insurance">
+            <div class="detail-card__header">
+                <div>
+                    <h2 class="detail-card__title">Thông tin BHYT</h2>
+                    <div class="detail-card__subtitle">@InsuranceDetailText()</div>
+                </div>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field"><span class="detail-label">Mã thẻ BHYT</span><span class="detail-value text-break-soft">@TextOrDefault(Model.HealthInsuranceNumber)</span></div>
+                <div class="detail-field"><span class="detail-label">Mã đang chờ duyệt</span><span class="detail-value text-break-soft">@TextOrDefault(Model.PendingHealthInsuranceNumber)</span></div>
+                <div class="detail-field"><span class="detail-label">Ngày hết hạn</span><span class="detail-value">@(Model.HealthInsuranceExpiryDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</span></div>
+                <div class="detail-field"><span class="detail-label">Mức hỗ trợ</span><span class="detail-value">@(Model.InsuranceCoveragePercent.HasValue ? $"{Model.InsuranceCoveragePercent}%" : "Chưa cập nhật")</span></div>
+                <div class="detail-field"><span class="detail-label">Cập nhật BHYT</span><span class="detail-value">@(Model.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</span></div>
+                <div class="detail-field"><span class="detail-label">Lý do từ chối</span><span class="detail-value">@TextOrDefault(Model.HealthInsuranceRejectReason)</span></div>
+            </div>
+        </section>
+
+        <section class="detail-card section-accent--health">
+            <div class="detail-card__header">
+                <div>
+                    <h2 class="detail-card__title">Thông tin y tế</h2>
+                    <div class="detail-card__subtitle">Dị ứng, bệnh nền và ghi chú chăm sóc.</div>
+                </div>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field"><span class="detail-label">Nhóm máu</span><span class="detail-value">@TextOrDefault(Model.BloodType)</span></div>
+                <div class="detail-field"><span class="detail-label">Dị ứng</span><span class="detail-value">@(string.IsNullOrWhiteSpace(Model.Allergy) ? "Không ghi nhận" : Model.Allergy)</span></div>
+                <div class="detail-field"><span class="detail-label">Bệnh mạn tính</span><span class="detail-value">@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</span></div>
+                <div class="detail-field"><span class="detail-label">Ghi chú chăm sóc</span><span class="detail-value">@(string.IsNullOrWhiteSpace(Model.Notes) ? "Không có ghi chú" : Model.Notes)</span></div>
+            </div>
+        </section>
+
+        <section class="detail-card">
+            <div class="detail-card__header">
+                <div>
+                    <h2 class="detail-card__title">Lịch hẹn gần đây</h2>
+                    <div class="detail-card__subtitle">Các lần khám mới nhất của bệnh nhân.</div>
+                </div>
+            </div>
+            @if (Model.RecentAppointments.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="empty-state__icon">i</div>
+                    <div class="fw-semibold">Chưa có lịch hẹn gần đây</div>
+                    <div class="text-secondary small">Khi bệnh nhân đặt lịch, các lần khám mới nhất sẽ hiển thị tại đây.</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table admin-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Chuyên khoa</th>
+                                <th>Bác sĩ</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var appointment in Model.RecentAppointments.Take(5))
+                        {
+                            <tr>
+                                <td>@(appointment.AppointmentDate?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
+                                <td>@appointment.DepartmentName</td>
+                                <td>@appointment.DoctorName</td>
+                                <td><span class="admin-badge admin-badge--info">@appointment.Status</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </main>
+</div>
+
 @functions {
+    string TextOrDefault(string? value) => string.IsNullOrWhiteSpace(value) ? "Chưa cập nhật" : value;
+
     string GenderText(Gender gender) => gender switch
     {
         Gender.Male => "Nam",
@@ -22,157 +174,36 @@
 
     string InsuranceStatusText(string? status) => status?.Trim().ToLowerInvariant() switch
     {
-        "pending" => "Chờ duyệt",
-        "approved" => "Đã duyệt",
+        "pending" => "Chờ xác minh",
+        "approved" => Model.HealthInsuranceExpiryDate.HasValue ? "Đã duyệt" : "Đã duyệt - thiếu hạn thẻ",
         "rejected" => "Từ chối",
-        "missing" or "" or null => "Chưa cập nhật",
+        "expired" => "Hết hạn",
+        "none" or "" or null => "Chưa có",
         _ => status
     };
-}
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-    <div>
-        <div class="eyebrow">Hồ sơ bệnh nhân</div>
-        <h1 class="page-title mb-1">@Model.FullName</h1>
-        <p class="text-secondary mb-0">Mã bệnh nhân: @Model.Code</p>
-    </div>
-    <a class="btn btn-light" asp-controller="Patients" asp-action="Index">Quay lại danh sách</a>
-</div>
+    string InsuranceDetailText()
+    {
+        var status = Model.HealthInsuranceStatus?.Trim().ToLowerInvariant();
+        if (status == "approved" && !Model.HealthInsuranceExpiryDate.HasValue) return "Dữ liệu cũ đã duyệt nhưng thiếu hạn thẻ.";
+        if (status == "expired" && Model.HealthInsuranceExpiryDate.HasValue) return $"Hết hạn từ ngày {Model.HealthInsuranceExpiryDate:dd/MM/yyyy}.";
+        if (status == "rejected" && !string.IsNullOrWhiteSpace(Model.HealthInsuranceRejectReason)) return $"Bị từ chối: {Model.HealthInsuranceRejectReason}";
+        return "Mã thẻ, hạn thẻ và mức hỗ trợ bảo hiểm.";
+    }
 
-<div class="patient-detail-grid">
-    <aside class="profile-summary-card">
-        <div class="avatar avatar-xl mx-auto">@Model.AvatarText</div>
-        <h2>@Model.FullName</h2>
-        <p>@(string.IsNullOrWhiteSpace(Model.Email) ? "Chưa có email" : Model.Email)</p>
-        <span class="admin-pill admin-pill--active">@StatusText(Model.Status)</span>
+    string StatusBadge(PatientStatus status) => status switch
+    {
+        PatientStatus.Inactive => "soft-badge soft-badge--warning",
+        PatientStatus.Blocked => "soft-badge soft-badge--danger",
+        _ => "soft-badge soft-badge--success"
+    };
 
-        <div class="summary-divider"></div>
-
-        <div class="summary-item"><span>BHYT</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong></div>
-        <div class="summary-item"><span>Trạng thái BHYT</span><strong>@InsuranceStatusText(Model.HealthInsuranceStatus)</strong></div>
-        <div class="summary-item"><span>Ngày tạo hồ sơ</span><strong>@(Model.CreatedAt?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong></div>
-    </aside>
-
-    <main class="detail-stack">
-        <section class="card detail-card">
-            <div class="detail-card__header">
-                <h3>Thông tin cá nhân</h3>
-                <span>Thông tin định danh và liên hệ</span>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><span>Số điện thoại</span><strong>@Model.Phone</strong></div>
-                <div class="info-item"><span>Email</span><strong>@(string.IsNullOrWhiteSpace(Model.Email) ? "Chưa cập nhật" : Model.Email)</strong></div>
-                <div class="info-item"><span>CCCD</span><strong>@(string.IsNullOrWhiteSpace(Model.Cccd) ? "Chưa cập nhật" : Model.Cccd)</strong></div>
-                <div class="info-item"><span>Giới tính</span><strong>@GenderText(Model.Gender)</strong></div>
-                <div class="info-item"><span>Ngày sinh</span><strong>@(Model.Dob?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</strong></div>
-                <div class="info-item"><span>Địa chỉ</span><strong>@Model.Address</strong></div>
-            </div>
-        </section>
-
-        <section class="card detail-card">
-            <div class="detail-card__header">
-                <h3>Thông tin BHYT</h3>
-                <span>Dữ liệu bảo hiểm người bệnh cung cấp</span>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><span>Mã thẻ</span><strong>@(string.IsNullOrWhiteSpace(Model.HealthInsuranceNumber) ? "Chưa cập nhật" : Model.HealthInsuranceNumber)</strong></div>
-                <div class="info-item"><span>Trạng thái</span><strong>@InsuranceStatusText(Model.HealthInsuranceStatus)</strong></div>
-            </div>
-            @if (string.Equals(Model.HealthInsuranceStatus, "pending", StringComparison.OrdinalIgnoreCase))
-            {
-                <div class="d-flex flex-wrap gap-2 mt-3 insurance-actions">
-                    <form asp-controller="Patients" asp-action="UpdateInsuranceStatus" method="post">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <input type="hidden" name="status" value="approved" />
-                        <button type="submit" class="btn btn-success">Xác nhận</button>
-                    </form>
-                    <form asp-controller="Patients" asp-action="UpdateInsuranceStatus" method="post" class="d-flex flex-wrap gap-2" id="rejectInsuranceForm">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <input type="hidden" name="status" value="rejected" />
-                        <input name="rejectReason" class="form-control d-none" style="min-width: 260px;" placeholder="Lý do từ chối (có thể để trống)" />
-                        <button type="button" class="btn btn-outline-danger" id="showRejectReason">Từ chối</button>
-                    </form>
-                </div>
-            }
-            @if (!string.IsNullOrWhiteSpace(Model.HealthInsuranceRejectReason))
-            {
-                <div class="alert alert-warning mt-3 mb-0">Lý do từ chối: @Model.HealthInsuranceRejectReason</div>
-            }
-        </section>
-
-        <section class="card detail-card">
-            <div class="detail-card__header">
-                <h3>Thông tin y tế</h3>
-                <span>Dị ứng, bệnh nền và ghi chú chăm sóc</span>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><span>Nhóm máu</span><strong>@(string.IsNullOrWhiteSpace(Model.BloodType) ? "Chưa cập nhật" : Model.BloodType)</strong></div>
-                <div class="info-item"><span>Dị ứng</span><strong>@(string.IsNullOrWhiteSpace(Model.Allergy) ? "Không ghi nhận" : Model.Allergy)</strong></div>
-                <div class="info-item"><span>Bệnh mạn tính</span><strong>@(string.IsNullOrWhiteSpace(Model.ChronicDisease) ? "Không ghi nhận" : Model.ChronicDisease)</strong></div>
-                <div class="info-item"><span>Ghi chú</span><strong>@(string.IsNullOrWhiteSpace(Model.Notes) ? "Không có ghi chú" : Model.Notes)</strong></div>
-            </div>
-        </section>
-        <section class="card detail-card">
-            <div class="detail-card__header">
-                <h3>Lịch hẹn gần đây</h3>
-                <span>Các lần khám mới nhất của bệnh nhân</span>
-            </div>
-            @if (Model.RecentAppointments.Count == 0)
-            {
-                <div class="empty-state">Chưa có lịch hẹn gần đây.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table admin-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Thời gian</th>
-                                <th>Chuyên khoa</th>
-                                <th>Bác sĩ</th>
-                                <th>Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var appointment in Model.RecentAppointments)
-                        {
-                            <tr>
-                                <td>@(appointment.AppointmentDate?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
-                                <td>@appointment.DepartmentName</td>
-                                <td>@appointment.DoctorName</td>
-                                <td><span class="admin-badge admin-badge--info">@appointment.Status</span></td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </section>
-    </main>
-</div>
-
-@section Scripts {
-    <script>
-(() => {
-    const form = document.getElementById('rejectInsuranceForm');
-    const input = form?.querySelector('[name="rejectReason"]');
-    const button = document.getElementById('showRejectReason');
-    if (!form || !input || !button) return;
-
-    let readyToSubmit = false;
-    button.addEventListener('click', () => {
-        if (!readyToSubmit) {
-            input.classList.remove('d-none');
-            input.focus();
-            button.textContent = 'Gửi từ chối';
-            readyToSubmit = true;
-            return;
-        }
-
-        form.submit();
-    });
-})();
-    </script>
+    string InsuranceBadge(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "approved" => "soft-badge soft-badge--success",
+        "pending" => "soft-badge soft-badge--warning",
+        "rejected" => "soft-badge soft-badge--danger",
+        "expired" => "soft-badge soft-badge--warning",
+        _ => "soft-badge"
+    };
 }

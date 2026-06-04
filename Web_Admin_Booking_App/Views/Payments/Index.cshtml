@@ -1,13 +1,14 @@
 @model Web_Admin_Booking_App.Models.PaymentsIndexViewModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Quản lý thanh toán";
+    var isStaff = User.IsInRole("staff");
+    ViewData["Title"] = "Thanh toán tại quầy";
 }
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
     <div>
-        <div class="fw-bold fs-5">Quản lý thanh toán</div>
-        <div class="text-secondary">Theo dõi và quản lý giao dịch tài chính của bệnh viện</div>
+        <div class="fw-bold fs-5">Thanh toán tại quầy</div>
+        <div class="text-secondary">Xác nhận thanh toán tiền mặt và theo dõi trạng thái hóa đơn.</div>
     </div>
     <div class="d-flex gap-2">
         <a id="exportInvoicePdf"
@@ -35,7 +36,7 @@
 
 <form method="get" id="paymentFilterForm" class="payment-filter mb-3" autocomplete="off" asp-controller="Payments" asp-action="Index">
     <div class="payment-filter__search">
-        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="Tìm mã hóa đơn, bệnh nhân, dịch vụ..." />
+        <input name="search" value="@Model.Search" class="form-control" type="search" placeholder="Tìm paymentCode, invoiceCode, appointmentCode, patientCode, tên bệnh nhân, SĐT..." />
     </div>
     <select name="sourceFilter" class="form-select">
         <option value="">Tất cả nguồn</option>
@@ -90,17 +91,23 @@
                         <th>Mã hóa đơn</th>
                         <th>Bệnh nhân</th>
                         <th>Dịch vụ</th>
-                        <th>Số tiền</th>
+                        <th>Tiền gốc</th>
+                        <th>BHYT hỗ trợ</th>
+                        <th>Bệnh nhân trả</th>
                         <th>Ngày thanh toán</th>
                         <th>Phương thức</th>
                         <th>Trạng thái</th>
+                        @if (isStaff)
+                        {
+                            <th class="text-end">Thao tác</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                 @if (Model.Transactions.Count == 0)
                 {
                     <tr>
-                        <td colspan="8">
+                        <td colspan="@(isStaff ? 11 : 10)">
                             <div class="empty-state empty-state--rich">
                                 <div class="empty-state__icon" aria-hidden="true">
                                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -128,13 +135,48 @@
                                        data-source-collection="@t.SourceCollection"
                                        aria-label="Chọn hóa đơn @t.InvoiceCode" />
                             </td>
-                            <td><a href="#" class="admin-link">@t.InvoiceCode</a></td>
-                            <td><div class="person-cell"><div class="avatar">@Initials(t.PatientName)</div><div class="fw-semibold">@ValueOrDash(t.PatientName)</div></div></td>
+                            <td>
+                                <a href="#" class="admin-link">@t.InvoiceCode</a>
+                                @if (!string.IsNullOrWhiteSpace(t.AppointmentCode))
+                                {
+                                    <div class="text-secondary small">Lịch: @t.AppointmentCode</div>
+                                }
+                            </td>
+                            <td>
+                                <div class="person-cell">
+                                    <div class="avatar">@Initials(t.PatientName)</div>
+                                    <div>
+                                        <div class="fw-semibold">@ValueOrDash(t.PatientName)</div>
+                                        <div class="text-secondary small">@ValueOrDash(t.PatientCode)</div>
+                                        <div class="text-secondary small">@ValueOrDash(t.PatientPhone)</div>
+                                    </div>
+                                </div>
+                            </td>
                             <td>@ValueOrDash(t.ServiceName)</td>
+                            <td class="fw-semibold">@Vnd(t.OriginalAmountVnd)</td>
+                            <td>@(t.InsuranceSupportVnd > 0 ? Vnd(t.InsuranceSupportVnd) : "-")</td>
                             <td class="fw-semibold">@Vnd(t.AmountVnd)</td>
                             <td><div class="fw-semibold">@t.PaidAt.ToString("dd/MM/yyyy")</div><div class="text-secondary small">@t.PaidAt.ToString("HH:mm")</div></td>
                             <td>@MethodText(t.Method)</td>
                             <td><span class="admin-pill @StatusClass(t.Status)">@StatusText(t.Status)</span></td>
+                            @if (isStaff)
+                            {
+                                <td class="text-end">
+                                    @if (t.Status == Web_Admin_Booking_App.Models.TransactionStatus.Pending && t.Method == Web_Admin_Booking_App.Models.PaymentMethod.Cash)
+                                    {
+                                        <form asp-controller="Payments" asp-action="ConfirmCash" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@t.Id" />
+                                            <input type="hidden" name="sourceCollection" value="@t.SourceCollection" />
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Xác nhận đã thu tiền mặt cho hóa đơn @t.InvoiceCode?');">Xác nhận đã thanh toán</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary small">-</span>
+                                    }
+                                </td>
+                            }
                         </tr>
                     }
                 }

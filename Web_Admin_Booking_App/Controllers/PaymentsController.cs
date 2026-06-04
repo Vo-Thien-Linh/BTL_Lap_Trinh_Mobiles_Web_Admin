@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOrStaff")]
 public class PaymentsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;
@@ -47,6 +50,34 @@ public class PaymentsController : Controller
         var fileName = $"phieu-thu-{SafeFileName(receipt.InvoiceCode)}.pdf";
         Response.Headers.ContentDisposition = $"inline; filename=\"{fileName}\"";
         return File(pdf, "application/pdf");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> ConfirmCash(string id, string? sourceCollection, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            await _dataService.ConfirmCashPaymentAsync(
+                id,
+                sourceCollection,
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                User.Identity?.Name ?? string.Empty,
+                CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã xác nhận thanh toán tiền mặt.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { methodFilter = "Cash", statusFilter = "Pending" });
     }
 
     private static string? ValidateFilters(
