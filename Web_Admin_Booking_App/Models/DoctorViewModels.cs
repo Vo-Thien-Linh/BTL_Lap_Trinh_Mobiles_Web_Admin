@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 
 namespace Web_Admin_Booking_App.Models;
@@ -30,77 +30,77 @@ public class DoctorListItemViewModel
 
 public class DoctorCreateViewModel
 {
-    [Required(ErrorMessage = "Vui lòng nhập họ và tên.")]
-    [Display(Name = "Họ và tên")]
+    [Required(ErrorMessage = "Vui lÃ²ng nháº­p há» vÃ  tÃªn.")]
+    [Display(Name = "Há» vÃ  tÃªn")]
     public string FullName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng nhập email.")]
-    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+    [Required(ErrorMessage = "Vui lÃ²ng nháº­p email.")]
+    [EmailAddress(ErrorMessage = "Email khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng.")]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
-    [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự.")]
+    [Required(ErrorMessage = "Vui lÃ²ng nháº­p máº­t kháº©u.")]
+    [MinLength(6, ErrorMessage = "Máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±.")]
     [DataType(DataType.Password)]
-    [Display(Name = "Mật khẩu")]
+    [Display(Name = "Máº­t kháº©u")]
     public string Password { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng nhập số điện thoại.")]
-    [RegularExpression(@"^\d{10}$", ErrorMessage = "Số điện thoại phải gồm đúng 10 chữ số.")]
-    [Display(Name = "Số điện thoại")]
+    [Required(ErrorMessage = "Vui lÃ²ng nháº­p sá»‘ Ä‘iá»‡n thoáº¡i.")]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Sá»‘ Ä‘iá»‡n thoáº¡i pháº£i gá»“m Ä‘Ãºng 10 chá»¯ sá»‘.")]
+    [Display(Name = "Sá»‘ Ä‘iá»‡n thoáº¡i")]
     public string Phone { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng nhập CCCD.")]
-    [RegularExpression(@"^\d{12}$", ErrorMessage = "CCCD phải gồm đúng 12 chữ số.")]
+    [Required(ErrorMessage = "Vui lÃ²ng nháº­p CCCD.")]
+    [RegularExpression(@"^\d{12}$", ErrorMessage = "CCCD pháº£i gá»“m Ä‘Ãºng 12 chá»¯ sá»‘.")]
     [Display(Name = "CCCD")]
     public string Cccd { get; set; } = string.Empty;
 
-    [Display(Name = "Ảnh đại diện")]
+    [Display(Name = "áº¢nh Ä‘áº¡i diá»‡n")]
     public string? AvatarUrl { get; set; }
 
-    [Display(Name = "Ảnh đại diện")]
+    [Display(Name = "áº¢nh Ä‘áº¡i diá»‡n")]
     public IFormFile? AvatarFile { get; set; }
 
-    [Display(Name = "Giới tính")]
+    [Display(Name = "Giá»›i tÃ­nh")]
     public string? Gender { get; set; }
 
     [DataType(DataType.Date)]
-    [Display(Name = "Ngày sinh")]
+    [Display(Name = "NgÃ y sinh")]
     public DateTime? DateOfBirth { get; set; }
 
-    [Display(Name = "Trạng thái tài khoản")]
+    [Display(Name = "Tráº¡ng thÃ¡i tÃ i khoáº£n")]
     public string UserStatus { get; set; } = "pending";
 
-    [Display(Name = "Đã xác minh email")]
+    [Display(Name = "ÄÃ£ xÃ¡c minh email")]
     public bool EmailVerified { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn khoa.")]
+    [Required(ErrorMessage = "Vui lÃ²ng chá»n khoa.")]
     [Display(Name = "Khoa")]
     public string DepartmentId { get; set; } = string.Empty;
 
     public IReadOnlyList<SelectOption> Departments { get; set; } = Array.Empty<SelectOption>();
 
-    [Display(Name = "Chuyên khoa")]
+    [Display(Name = "ChuyÃªn khoa")]
     public string Specialization { get; set; } = string.Empty;
 
-    [Display(Name = "Chứng chỉ hành nghề")]
+    [Display(Name = "Chá»©ng chá»‰ hÃ nh nghá»")]
     public string LicenseNumber { get; set; } = string.Empty;
 
-    [Display(Name = "Học vị")]
+    [Display(Name = "Há»c vá»‹")]
     public string? Degree { get; set; }
 
     [Range(0, 80)]
-    [Display(Name = "Số năm kinh nghiệm")]
+    [Display(Name = "Sá»‘ nÄƒm kinh nghiá»‡m")]
     public int? YearsOfExperience { get; set; }
 
     [Range(0, 999999999)]
-    [Display(Name = "Phí khám")]
+    [Display(Name = "PhÃ­ khÃ¡m")]
     public decimal? ConsultationFee { get; set; }
 
-    [Display(Name = "Giới thiệu bác sĩ")]
+    [Display(Name = "Giá»›i thiá»‡u bÃ¡c sÄ©")]
     public string? Biography { get; set; }
 
-    [Display(Name = "Đang hoạt động")]
+    [Display(Name = "Äang hoáº¡t Ä‘á»™ng")]
     public bool IsActive { get; set; } = true;
 
     [Display(Name = "Bác sĩ nổi bật")]
@@ -110,7 +110,7 @@ public class DoctorCreateViewModel
     [Display(Name = "Thứ hạng nổi bật")]
     public int? FeaturedRank { get; set; }
 
-    [Display(Name = "Trạng thái duyệt hồ sơ")]
+    [Display(Name = "Tráº¡ng thÃ¡i duyá»‡t há»“ sÆ¡")]
     public string VerificationStatus { get; set; } = "pending";
 }
 

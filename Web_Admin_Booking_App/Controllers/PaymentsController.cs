@@ -32,6 +32,7 @@ public class PaymentsController : Controller
             vm.FilterError = filterError;
             vm.Transactions = Array.Empty<TransactionListItemViewModel>();
         }
+
         return View(vm);
     }
 
@@ -78,6 +79,34 @@ public class PaymentsController : Controller
         }
 
         return RedirectToAction(nameof(Index), new { methodFilter = "Cash", statusFilter = "Pending" });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> MarkFailed(string id, string? sourceCollection, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            await _dataService.UpdatePaymentStatusAsync(
+                id,
+                sourceCollection,
+                TransactionStatus.Failed,
+                User.Identity?.Name ?? "staff",
+                CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã chuyển giao dịch sang thất bại.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { statusFilter = nameof(TransactionStatus.Pending) });
     }
 
     private static string? ValidateFilters(

@@ -168,7 +168,7 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@t.Id" />
                                             <input type="hidden" name="sourceCollection" value="@t.SourceCollection" />
-                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Xác nhận đã thu tiền mặt cho hóa đơn @t.InvoiceCode?');">Xác nhận đã thanh toán</button>
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Xác nhận đã thu tiền mặt cho hóa đơn @t.InvoiceCode?');">Xác nhận thanh toán tiền mặt</button>
                                         </form>
                                     }
                                     else

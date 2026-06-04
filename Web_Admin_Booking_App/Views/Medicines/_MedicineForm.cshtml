@@ -1,0 +1,100 @@
+@model Web_Admin_Booking_App.Models.MedicineUpsertViewModel
+
+<form asp-action="@ViewData["FormAction"]" method="post" class="row g-3">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="MedicineCode" type="hidden" />
+    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+
+    <div class="col-md-4">
+        <label class="form-label">Mã thuốc</label>
+        <input class="form-control bg-light" value="@(string.IsNullOrWhiteSpace(Model.MedicineCode) ? "Hệ thống tự tạo khi lưu" : Model.MedicineCode)" readonly />
+    </div>
+
+    <div class="col-md-8">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" placeholder="VD: Paracetamol" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Strength" class="form-label"></label>
+        <input asp-for="Strength" class="form-control" placeholder="VD: 500mg" />
+        <span asp-validation-for="Strength" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Unit" class="form-label"></label>
+        <input asp-for="Unit" class="form-control" list="medicine-units" placeholder="VD: viên" />
+        <datalist id="medicine-units">
+            @foreach (var unit in Model.UnitSuggestions)
+            {
+                <option value="@unit"></option>
+            }
+        </datalist>
+        <span asp-validation-for="Unit" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Group" class="form-label"></label>
+        <input asp-for="Group" class="form-control" list="medicine-groups" placeholder="VD: Hạ sốt" />
+        <datalist id="medicine-groups">
+            @foreach (var group in Model.GroupSuggestions)
+            {
+                <option value="@group"></option>
+            }
+        </datalist>
+        <span asp-validation-for="Group" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="UnitPrice" class="form-label"></label>
+        <input asp-for="UnitPrice" class="form-control js-money-input" type="text" inputmode="numeric" placeholder="VD: 5.000" />
+        <span asp-validation-for="UnitPrice" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Quantity" class="form-label"></label>
+        <input asp-for="Quantity" class="form-control" type="number" min="0" />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="LowStockThreshold" class="form-label"></label>
+        <input asp-for="LowStockThreshold" class="form-control" type="number" min="0" />
+        <span asp-validation-for="LowStockThreshold" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Note" class="form-label"></label>
+        <textarea asp-for="Note" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Note" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <div class="form-check">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label asp-for="IsActive" class="form-check-label"></label>
+        </div>
+    </div>
+
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Lưu</button>
+        <a class="btn btn-outline-secondary" asp-controller="Medicines" asp-action="Index">Hủy</a>
+    </div>
+</form>
+
+<script>
+    (() => {
+        const formatMoney = value => {
+            const digits = (value || "").replace(/\D/g, "");
+            return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        };
+
+        document.querySelectorAll(".js-money-input").forEach(input => {
+            input.value = formatMoney(input.value);
+            input.addEventListener("input", () => input.value = formatMoney(input.value));
+            input.form?.addEventListener("submit", () => input.value = (input.value || "").replace(/\D/g, ""));
+        });
+    })();
+</script>

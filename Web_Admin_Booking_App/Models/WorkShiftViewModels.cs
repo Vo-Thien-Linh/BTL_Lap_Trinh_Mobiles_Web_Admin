@@ -17,6 +17,7 @@ public enum AssignmentStatus
 public class WorkShiftsIndexViewModel
 {
     public string Mode { get; set; } = "calendar"; // calendar | list
+    public string SelectedDoctorId { get; set; } = string.Empty;
     public string RangeLabel { get; set; } = string.Empty;
     public WorkScheduleGenerateViewModel GenerateForm { get; set; } = new();
     public IReadOnlyList<SelectOption> Doctors { get; set; } = Array.Empty<SelectOption>();
@@ -77,11 +78,54 @@ public class WorkScheduleBackfillRoomViewModel
     public string RoomNumber { get; set; } = string.Empty;
 }
 
+public class WorkScheduleEditViewModel
+{
+    public string DocumentId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn bác sĩ.")]
+    [Display(Name = "Bác sĩ")]
+    public string DoctorId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn khoa.")]
+    [Display(Name = "Khoa")]
+    public string DepartmentId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn phòng.")]
+    [Display(Name = "Phòng")]
+    public string RoomNumber { get; set; } = string.Empty;
+
+    public string RoomId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn ca làm việc.")]
+    [Display(Name = "Ca làm việc")]
+    public string ShiftId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn ngày làm việc.")]
+    [Display(Name = "Ngày làm việc")]
+    public DateOnly ScheduleDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    [Range(1, 100, ErrorMessage = "Số slot tối đa phải từ 1 đến 100.")]
+    [Display(Name = "Slot tối đa")]
+    public int MaxSlots { get; set; } = 10;
+
+    [Range(0, 100, ErrorMessage = "Slot còn lại phải từ 0 đến 100.")]
+    [Display(Name = "Slot còn lại")]
+    public int AvailableSlots { get; set; } = 10;
+
+    [Display(Name = "Bật lịch")]
+    public bool IsActive { get; set; } = true;
+
+    public IReadOnlyList<SelectOption> Doctors { get; set; } = Array.Empty<SelectOption>();
+    public IReadOnlyList<SelectOption> Departments { get; set; } = Array.Empty<SelectOption>();
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> DepartmentRooms { get; set; } = new Dictionary<string, IReadOnlyList<string>>();
+    public IReadOnlyList<SelectOption> Shifts { get; set; } = Array.Empty<SelectOption>();
+}
+
 public class DoctorScheduleRowViewModel
 {
     public string DocumentId { get; set; } = string.Empty;
-    public DateOnly Date { get; set; }
     public string DoctorId { get; set; } = string.Empty;
+    public DateOnly Date { get; set; }
     public string DoctorName { get; set; } = string.Empty;
     public string DepartmentId { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;

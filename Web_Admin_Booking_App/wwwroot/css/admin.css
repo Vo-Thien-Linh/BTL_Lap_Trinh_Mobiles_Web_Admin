@@ -2454,6 +2454,14 @@ body.admin-body {
     transition: all .2s ease;
 }
 
+.admin-nav__link span:last-child,
+.admin-cta span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .admin-nav__link:hover {
     color: #fff;
     background: rgba(255, 255, 255, .12);
