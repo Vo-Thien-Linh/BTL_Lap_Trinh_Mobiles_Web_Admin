@@ -2,96 +2,138 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Đặt lịch hẹn";
+    ViewData["PageTitle"] = "Tạo lịch hẹn";
 }
 
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-    <div>
-        <div class="fw-bold fs-5">Tạo lịch hẹn mới</div>
-        <div class="text-secondary">Nhập thông tin bệnh nhân và thời gian khám</div>
+<section class="admin-form-page">
+    <div class="admin-page-header admin-page-header--compact">
+        <div>
+            <div class="admin-page-kicker">Lịch hẹn</div>
+            <h1 class="admin-page-title">Tạo lịch hẹn mới</h1>
+            <p class="admin-page-subtitle">Nhập thông tin bệnh nhân, bác sĩ phụ trách và thời gian khám.</p>
+        </div>
+        <a class="admin-action-btn" asp-controller="Appointments" asp-action="Index">Quay lại</a>
     </div>
-    <a class="btn btn-light" asp-controller="Appointments" asp-action="Index">Quay lại</a>
-</div>
 
-<div class="card panel-card">
-    <div class="card-body">
-        <form asp-action="Create" method="post" class="row g-3">
-            @Html.AntiForgeryToken()
+    <form asp-action="Create" method="post" id="appointmentCreateForm">
+        @Html.AntiForgeryToken()
 
-            <div class="col-md-6">
-                <label asp-for="PatientName" class="form-label"></label>
-                <input asp-for="PatientName" class="form-control" placeholder="VD: Nguyễn Văn An" />
-                <span asp-validation-for="PatientName" class="text-danger"></span>
+        <div class="admin-form-shell">
+            <div class="admin-form-main">
+                <section class="admin-form-card">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Thông tin bệnh nhân</h2>
+                        <p class="admin-form-card__subtitle">Thông tin cơ bản dùng để tạo lịch khám.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="PatientName" class="form-label"></label>
+                                <input asp-for="PatientName" class="form-control" placeholder="VD: Nguyễn Văn An" data-preview-patient />
+                                <span asp-validation-for="PatientName" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="PatientPhone" class="form-label"></label>
+                                <input asp-for="PatientPhone" class="form-control" placeholder="VD: 0901234567" />
+                                <span asp-validation-for="PatientPhone" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-card">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Bác sĩ và chuyên khoa</h2>
+                        <p class="admin-form-card__subtitle">Chọn chuyên khoa trước để lọc danh sách bác sĩ phù hợp.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="SpecialtyId" class="form-label">Chuyên khoa</label>
+                                <select asp-for="SpecialtyId" class="form-select" id="specialtySelect">
+                                    <option value="">-- Chọn chuyên khoa --</option>
+                                    @foreach (var s in Model.Specialties)
+                                    {
+                                        <option value="@s.Value">@s.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="SpecialtyId" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="DoctorId" class="form-label">Bác sĩ</label>
+                                <select asp-for="DoctorId" class="form-select" id="doctorSelect">
+                                    <option value="">-- Chọn bác sĩ --</option>
+                                    @foreach (var d in Model.Doctors)
+                                    {
+                                        <option value="@d.Value">@d.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="DoctorId" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-card">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Thời gian và trạng thái</h2>
+                        <p class="admin-form-card__subtitle">Lịch không được tạo trong quá khứ.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="Date" class="form-label"></label>
+                                <input asp-for="Date" class="form-control" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                <span asp-validation-for="Date" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Time" class="form-label"></label>
+                                <input asp-for="Time" class="form-control" type="time" />
+                                <div class="admin-input-hint" id="timePreview"></div>
+                                <span asp-validation-for="Time" class="text-danger"></span>
+                            </div>
+                            <div class="is-full">
+                                <label asp-for="Status" class="form-label"></label>
+                                <select asp-for="Status" class="form-select">
+                                    <option value="Pending">Chờ xác nhận</option>
+                                    <option value="Confirmed">Đã xác nhận</option>
+                                    <option value="Upcoming">Sắp đến</option>
+                                    <option value="InProgress">Đang khám</option>
+                                    <option value="Completed">Đã khám</option>
+                                    <option value="Cancelled">Đã hủy</option>
+                                </select>
+                                <span asp-validation-for="Status" class="text-danger"></span>
+                            </div>
+                            <div class="is-full">
+                                <label asp-for="Note" class="form-label"></label>
+                                <textarea asp-for="Note" class="form-control" rows="3" placeholder="Ghi chú thêm nếu có"></textarea>
+                                <span asp-validation-for="Note" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="admin-form-actions">
+                    <a class="btn btn-outline-secondary px-4" asp-controller="Appointments" asp-action="Index">Hủy</a>
+                    <button type="submit" class="btn btn-primary px-4">Lưu lịch hẹn</button>
+                </div>
             </div>
 
-            <div class="col-md-6">
-                <label asp-for="PatientPhone" class="form-label"></label>
-                <input asp-for="PatientPhone" class="form-control" placeholder="VD: 0901 234 567" />
-                <span asp-validation-for="PatientPhone" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="DoctorId" class="form-label">Bác sĩ</label>
-                <select asp-for="DoctorId" class="form-select" id="doctorSelect">
-                    <option value="">-- Chọn bác sĩ --</option>
-                    @foreach (var d in Model.Doctors)
-                    {
-                        <option value="@d.Value">@d.Text</option>
-                    }
-                </select>
-                <span asp-validation-for="DoctorId" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="SpecialtyId" class="form-label">Chuyên khoa</label>
-                <select asp-for="SpecialtyId" class="form-select" id="specialtySelect">
-                    <option value="">-- Chọn chuyên khoa --</option>
-                    @foreach (var s in Model.Specialties)
-                    {
-                        <option value="@s.Value">@s.Text</option>
-                    }
-                </select>
-                <span asp-validation-for="SpecialtyId" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-3">
-                <label asp-for="Date" class="form-label"></label>
-                <input asp-for="Date" class="form-control" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                <span asp-validation-for="Date" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-3">
-                <label asp-for="Time" class="form-label"></label>
-                <input asp-for="Time" class="form-control" type="time" />
-                <div class="form-text" id="timePreview"></div>
-                <span asp-validation-for="Time" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-6">
-                <label asp-for="Status" class="form-label"></label>
-                <select asp-for="Status" class="form-select">
-                    <option value="Pending">Chờ xác nhận</option>
-                    <option value="Confirmed">Đã xác nhận</option>
-                    <option value="Upcoming">Sắp đến</option>
-                    <option value="InProgress">Đang khám</option>
-                    <option value="Completed">Đã khám</option>
-                    <option value="Cancelled">Đã hủy</option>
-                </select>
-                <span asp-validation-for="Status" class="text-danger"></span>
-            </div>
-
-            <div class="col-12">
-                <label asp-for="Note" class="form-label"></label>
-                <textarea asp-for="Note" class="form-control" rows="3" placeholder="Ghi chú thêm (nếu có)"></textarea>
-                <span asp-validation-for="Note" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Lưu lịch hẹn</button>
-                <a class="btn btn-outline-secondary" asp-controller="Appointments" asp-action="Index">Hủy</a>
-            </div>
-        </form>
-    </div>
-</div>
+            <aside class="admin-form-aside">
+                <div class="admin-help-card compact-help-card">
+                    <div class="admin-help-card__avatar" data-preview-avatar>LH</div>
+                    <h2 class="h5 fw-bold mb-1" data-preview-title>Lịch hẹn mới</h2>
+                    <div class="text-secondary">Thông tin sẽ được lưu vào hệ thống đặt lịch.</div>
+                    <ul class="admin-help-list compact-tip-list">
+                        <li>Chọn chuyên khoa để cập nhật danh sách bác sĩ.</li>
+                        <li>Thời gian khám cần nằm trong ngày hiện tại hoặc tương lai.</li>
+                        <li>Trạng thái mặc định nên để “Chờ xác nhận”.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </form>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -101,15 +143,30 @@
     const doctor = document.getElementById('doctorSelect');
     const time = document.getElementById('Time');
     const preview = document.getElementById('timePreview');
-    const form = document.querySelector('form');
+    const form = document.getElementById('appointmentCreateForm');
     const submit = form?.querySelector('button[type="submit"]');
+    const patient = document.querySelector('[data-preview-patient]');
+    const previewTitle = document.querySelector('[data-preview-title]');
+    const previewAvatar = document.querySelector('[data-preview-avatar]');
+
+    const initials = value => {
+        const parts = (value || '').trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 0) return 'LH';
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
+    const syncPreview = () => {
+        if (previewTitle) previewTitle.textContent = patient?.value || 'Lịch hẹn mới';
+        if (previewAvatar) previewAvatar.textContent = initials(patient?.value);
+    };
 
     const updateTimePreview = () => {
         if (!time?.value || !preview) return;
         const [h, m] = time.value.split(':').map(Number);
         const suffix = h >= 12 ? 'PM' : 'AM';
         const hour = h % 12 || 12;
-        preview.textContent = `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+        preview.textContent = `Hiển thị: ${hour}:${String(m).padStart(2, '0')} ${suffix}`;
     };
 
     const refreshSubmitState = () => {
@@ -132,7 +189,9 @@
         el.addEventListener('input', refreshSubmitState);
         el.addEventListener('change', refreshSubmitState);
     });
+    patient?.addEventListener('input', syncPreview);
     time?.addEventListener('input', updateTimePreview);
+    syncPreview();
     updateTimePreview();
     refreshSubmitState();
 })();

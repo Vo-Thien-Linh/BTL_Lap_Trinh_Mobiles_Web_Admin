@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOnly")]
 public class DoctorsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;
@@ -75,8 +77,8 @@ public class DoctorsController : Controller
         {
             model.AvatarUrl = await SaveAvatarFileAsync(model.AvatarFile);
             var authUser = await _authService.CreateUserWithPasswordAsync(model.Email, model.Password);
-            var doctorId = await _dataService.CreateDoctorAsync(model, authUser.LocalId, CancellationToken.None);
-            TempData["InfoMessage"] = $"Đã tạo tài khoản bác sĩ và hồ sơ Doctors/{doctorId}.";
+            var doctorCode = await _dataService.CreateDoctorAsync(model, authUser.LocalId, CancellationToken.None);
+            TempData["InfoMessage"] = $"Đã tạo tài khoản bác sĩ thành công. Mã bác sĩ: {doctorCode}.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)

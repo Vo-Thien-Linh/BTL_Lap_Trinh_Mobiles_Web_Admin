@@ -1,0 +1,244 @@
+@model Web_Admin_Booking_App.Models.InsuranceApprovalIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Duyệt bảo hiểm y tế";
+    ViewData["PageTitle"] = "Duyệt bảo hiểm y tế";
+    var today = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+}
+
+<section class="admin-page">
+    <div class="admin-page-header">
+        <div>
+            <div class="eyebrow">Bảo hiểm y tế</div>
+            <h1 class="admin-page-title">Duyệt bảo hiểm y tế</h1>
+            <p class="admin-page-subtitle">Kiểm tra thông tin BHYT do bệnh nhân gửi và cập nhật trạng thái.</p>
+        </div>
+    </div>
+
+    <div class="admin-stat-grid mb-3">
+        <div class="admin-stat-card"><span class="admin-stat-label">Chờ xác minh</span><strong class="admin-stat-value">@Model.PendingCount</strong><small>Yêu cầu cần xử lý</small></div>
+        <div class="admin-stat-card"><span class="admin-stat-label">Đã duyệt</span><strong class="admin-stat-value">@Model.ApprovedCount</strong><small>Hồ sơ BHYT hợp lệ</small></div>
+        <div class="admin-stat-card"><span class="admin-stat-label">Từ chối</span><strong class="admin-stat-value">@Model.RejectedCount</strong><small>Yêu cầu không hợp lệ</small></div>
+        <div class="admin-stat-card"><span class="admin-stat-label">Hết hạn</span><strong class="admin-stat-value">@Model.ExpiredCount</strong><small>Không áp dụng thanh toán</small></div>
+    </div>
+
+    <form asp-controller="InsuranceApprovals" asp-action="Index" method="get" class="filter-toolbar mb-3">
+        <div class="filter-search">
+            <span>⌕</span>
+            <input name="search" value="@Model.Search" class="form-control" autocomplete="off" placeholder="Tìm theo mã BHYT, mã bệnh nhân, tên, SĐT..." />
+        </div>
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        <div class="filter-validation-message @(string.IsNullOrWhiteSpace(Model.FilterError) ? "" : "is-visible")">
+            @Model.FilterError
+        </div>
+    </form>
+
+    <div class="admin-table-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr>
+                        <th>Mã BHYT</th>
+                        <th>Bệnh nhân</th>
+                        <th>Liên hệ</th>
+                        <th>Mã hiện tại</th>
+                        <th>Mã chờ duyệt</th>
+                        <th>Ngày gửi</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="8"><div class="empty-state">Không có yêu cầu BHYT chờ xử lý.</div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@TextOrDefault(item.InsuranceCode)</td>
+                            <td>
+                                <div class="fw-semibold">@item.PatientName</div>
+                                <div class="text-secondary small">Mã bệnh nhân: @item.PatientCode</div>
+                            </td>
+                            <td>@TextOrDefault(item.Phone)</td>
+                            <td class="text-break-soft">@TextOrDefault(item.CurrentInsuranceNumber)</td>
+                            <td class="text-break-soft">@TextOrDefault(item.PendingInsuranceNumber)</td>
+                            <td>@(item.SubmittedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa cập nhật")</td>
+                            <td><span class="admin-badge admin-badge--warning">Chờ xác minh</span></td>
+                            <td class="text-end">
+                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                    <button type="button"
+                                            class="btn btn-sm btn-success"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#approveInsuranceModal"
+                                            data-patient-id="@item.PatientId"
+                                            data-patient-name="@item.PatientName"
+                                            data-insurance-number="@item.PendingInsuranceNumber">
+                                        Duyệt
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#rejectInsuranceModal"
+                                            data-patient-id="@item.PatientId"
+                                            data-patient-name="@item.PatientName"
+                                            data-insurance-number="@item.PendingInsuranceNumber">
+                                        Từ chối
+                                    </button>
+                                    <a class="btn btn-sm btn-light" asp-controller="Patients" asp-action="Details" asp-route-id="@item.PatientId">Xem hồ sơ</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="approveInsuranceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" asp-controller="InsuranceApprovals" asp-action="Approve" method="post" id="approveInsuranceForm" novalidate>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="patientId" data-modal-patient-id />
+            <div class="modal-header">
+                <h2 class="modal-title h5">Duyệt BHYT</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="fw-semibold" data-modal-patient-name></div>
+                    <div class="text-secondary small">Mã chờ duyệt: <span data-modal-insurance-number></span></div>
+                </div>
+                <label class="form-label">Ngày hết hạn</label>
+                <input type="date" name="expiryDate" class="form-control" min="@today" required />
+                <div class="invalid-feedback d-block" data-approve-error></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-success">Xác nhận duyệt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectInsuranceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" asp-controller="InsuranceApprovals" asp-action="Reject" method="post" id="rejectInsuranceForm" novalidate>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="patientId" data-modal-patient-id />
+            <input type="hidden" name="rejectReason" data-reject-reason />
+            <div class="modal-header">
+                <h2 class="modal-title h5">Từ chối BHYT</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="fw-semibold" data-modal-patient-name></div>
+                    <div class="text-secondary small">Mã chờ duyệt: <span data-modal-insurance-number></span></div>
+                </div>
+                <label class="form-label">Lý do từ chối</label>
+                <select class="form-select mb-2" data-reject-reason-select required>
+                    <option value="">Chọn lý do</option>
+                    <option value="Thông tin không hợp lệ">Thông tin không hợp lệ</option>
+                    <option value="Mã BHYT không đúng định dạng">Mã BHYT không đúng định dạng</option>
+                    <option value="Không khớp thông tin bệnh nhân">Không khớp thông tin bệnh nhân</option>
+                    <option value="Khác">Khác</option>
+                </select>
+                <textarea class="form-control d-none" rows="3" maxlength="250" data-reject-other placeholder="Nhập lý do khác"></textarea>
+                <div class="invalid-feedback d-block" data-reject-error></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-outline-danger">Xác nhận từ chối</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+(() => {
+    const today = '@today';
+
+    const fillModal = (modal, button) => {
+        modal.querySelectorAll('[data-modal-patient-id]').forEach(x => x.value = button.dataset.patientId || '');
+        modal.querySelectorAll('[data-modal-patient-name]').forEach(x => x.textContent = button.dataset.patientName || '');
+        modal.querySelectorAll('[data-modal-insurance-number]').forEach(x => x.textContent = button.dataset.insuranceNumber || 'Chưa cập nhật');
+    };
+
+    const approveModal = document.getElementById('approveInsuranceModal');
+    approveModal?.addEventListener('show.bs.modal', event => {
+        fillModal(approveModal, event.relatedTarget);
+        approveModal.querySelector('[name="expiryDate"]').value = '';
+        approveModal.querySelector('[data-approve-error]').textContent = '';
+    });
+
+    document.getElementById('approveInsuranceForm')?.addEventListener('submit', event => {
+        const form = event.currentTarget;
+        const expiry = form.querySelector('[name="expiryDate"]').value;
+        const error = form.querySelector('[data-approve-error]');
+        error.textContent = '';
+
+        if (!expiry) {
+            event.preventDefault();
+            error.textContent = 'Vui lòng nhập ngày hết hạn BHYT.';
+            return;
+        }
+
+        if (expiry < today) {
+            event.preventDefault();
+            error.textContent = 'Ngày hết hạn phải lớn hơn hoặc bằng hôm nay.';
+        }
+    });
+
+    const rejectModal = document.getElementById('rejectInsuranceModal');
+    rejectModal?.addEventListener('show.bs.modal', event => {
+        fillModal(rejectModal, event.relatedTarget);
+        rejectModal.querySelector('[data-reject-reason-select]').value = '';
+        rejectModal.querySelector('[data-reject-other]').value = '';
+        rejectModal.querySelector('[data-reject-other]').classList.add('d-none');
+        rejectModal.querySelector('[data-reject-error]').textContent = '';
+    });
+
+    const reasonSelect = document.querySelector('[data-reject-reason-select]');
+    const otherInput = document.querySelector('[data-reject-other]');
+    reasonSelect?.addEventListener('change', () => {
+        otherInput.classList.toggle('d-none', reasonSelect.value !== 'Khác');
+        if (reasonSelect.value !== 'Khác') otherInput.value = '';
+    });
+
+    document.getElementById('rejectInsuranceForm')?.addEventListener('submit', event => {
+        const form = event.currentTarget;
+        const select = form.querySelector('[data-reject-reason-select]');
+        const other = form.querySelector('[data-reject-other]');
+        const hidden = form.querySelector('[data-reject-reason]');
+        const error = form.querySelector('[data-reject-error]');
+        error.textContent = '';
+
+        if (!select.value) {
+            event.preventDefault();
+            error.textContent = 'Vui lòng chọn lý do từ chối.';
+            return;
+        }
+
+        if (select.value === 'Khác' && !other.value.trim()) {
+            event.preventDefault();
+            error.textContent = 'Vui lòng nhập mô tả lý do khác.';
+            return;
+        }
+
+        hidden.value = select.value === 'Khác' ? other.value.trim() : select.value;
+    });
+})();
+    </script>
+}
+
+@functions {
+    private static string TextOrDefault(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Chưa cập nhật" : value;
+}

@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Web_Admin_Booking_App.Models;
 using Web_Admin_Booking_App.Services;
 
 namespace Web_Admin_Booking_App.Controllers;
 
+[Authorize(Policy = "AdminOrStaff")]
 public class PaymentsController : Controller
 {
     private readonly FirestoreAdminDataService _dataService;
@@ -29,6 +32,7 @@ public class PaymentsController : Controller
             vm.FilterError = filterError;
             vm.Transactions = Array.Empty<TransactionListItemViewModel>();
         }
+
         return View(vm);
     }
 
@@ -51,28 +55,50 @@ public class PaymentsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkPaid(string id, string? sourceCollection, CancellationToken cancellationToken)
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> ConfirmCash(string id, string? sourceCollection, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest();
+        }
+
         try
         {
-            await _dataService.UpdatePaymentStatusAsync(id, sourceCollection, TransactionStatus.Paid, User.Identity?.Name ?? "staff", CancellationToken.None);
-            TempData["SuccessMessage"] = "Đã xác nhận thanh toán.";
+            await _dataService.ConfirmCashPaymentAsync(
+                id,
+                sourceCollection,
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                User.Identity?.Name ?? string.Empty,
+                CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã xác nhận thanh toán tiền mặt.";
         }
         catch (InvalidOperationException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Index), new { statusFilter = nameof(TransactionStatus.Pending) });
+        return RedirectToAction(nameof(Index), new { methodFilter = "Cash", statusFilter = "Pending" });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> MarkFailed(string id, string? sourceCollection, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest();
+        }
+
         try
         {
-            await _dataService.UpdatePaymentStatusAsync(id, sourceCollection, TransactionStatus.Failed, User.Identity?.Name ?? "staff", CancellationToken.None);
+            await _dataService.UpdatePaymentStatusAsync(
+                id,
+                sourceCollection,
+                TransactionStatus.Failed,
+                User.Identity?.Name ?? "staff",
+                CancellationToken.None);
             TempData["SuccessMessage"] = "Đã chuyển giao dịch sang thất bại.";
         }
         catch (InvalidOperationException ex)

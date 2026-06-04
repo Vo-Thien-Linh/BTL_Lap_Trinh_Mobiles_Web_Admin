@@ -93,6 +93,49 @@ public sealed class FirebaseAuthRestService
         }
     }
 
+    public async Task<FirebaseTokenVerifyResult?> VerifyIdTokenAsync(
+        string idToken,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateWebApiKey();
+
+        if (string.IsNullOrWhiteSpace(idToken))
+        {
+            return null;
+        }
+
+        var url =
+            $"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={_settings.WebApiKey}";
+
+        var payload = new
+        {
+            idToken = idToken.Trim()
+        };
+
+        using var response = await _httpClient.PostAsJsonAsync(url, payload, cancellationToken);
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var result = JsonSerializer.Deserialize<FirebaseLookupResponse>(
+            responseText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        var user = result?.Users?.FirstOrDefault();
+        if (user is null || string.IsNullOrWhiteSpace(user.LocalId))
+        {
+            return null;
+        }
+
+        return new FirebaseTokenVerifyResult
+        {
+            Uid = user.LocalId,
+            Email = user.Email ?? string.Empty
+        };
+    }
+
     private void ValidateWebApiKey()
     {
         if (string.IsNullOrWhiteSpace(_settings.WebApiKey) ||
@@ -156,4 +199,21 @@ public sealed class FirebaseSignInResult
     public string IdToken { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
     public string ExpiresIn { get; set; } = string.Empty;
+}
+
+public sealed class FirebaseTokenVerifyResult
+{
+    public string Uid { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+internal sealed class FirebaseLookupResponse
+{
+    public List<FirebaseLookupUser> Users { get; set; } = new();
+}
+
+internal sealed class FirebaseLookupUser
+{
+    public string LocalId { get; set; } = string.Empty;
+    public string? Email { get; set; }
 }

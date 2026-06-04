@@ -1,0 +1,233 @@
+@model Web_Admin_Booking_App.Models.WorkShiftsIndexViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Phân công lịch bác sĩ";
+    ViewData["PageTitle"] = "Phân công lịch bác sĩ";
+    var selectedDate = (DateOnly)(ViewData["SelectedDate"] ?? DateOnly.FromDateTime(DateTime.Today));
+    var selectedDepartmentId = (ViewData["DepartmentId"] ?? string.Empty).ToString();
+    var selectedRoomNumber = (ViewData["RoomNumber"] ?? string.Empty).ToString();
+    var selectedShiftId = (ViewData["ShiftId"] ?? string.Empty).ToString();
+}
+
+<section class="admin-page">
+    <div class="admin-page-header">
+        <div>
+            <div class="eyebrow">Vận hành lịch làm việc</div>
+            <h1 class="admin-page-title">Phân công lịch bác sĩ</h1>
+            <p class="admin-page-subtitle">Thiết lập lịch làm việc theo ngày, phòng khám, ca và bác sĩ phụ trách.</p>
+        </div>
+    </div>
+
+    <form asp-controller="DoctorSchedules" asp-action="Index" method="get" class="filter-toolbar mb-3">
+        <input class="form-control filter-select" name="date" type="date" value="@selectedDate.ToString("yyyy-MM-dd")" />
+        <select class="form-select filter-select js-department-select" name="departmentId" data-room-target="#filter-room">
+            <option value="">Tất cả chuyên khoa</option>
+            @foreach (var department in Model.Departments)
+            {
+                <option value="@department.Value" selected="@(department.Value == selectedDepartmentId)">@department.Text</option>
+            }
+        </select>
+        <select class="form-select filter-select js-room-select" id="filter-room" name="roomNumber" data-selected="@selectedRoomNumber">
+            <option value="">Tất cả phòng</option>
+            @foreach (var group in Model.DepartmentRooms)
+            {
+                foreach (var room in group.Value)
+                {
+                    <option value="@room" data-department="@group.Key" selected="@(room == selectedRoomNumber)">@room</option>
+                }
+            }
+        </select>
+        <select class="form-select filter-select" name="shiftId">
+            <option value="">Tất cả ca</option>
+            @foreach (var shift in Model.Shifts)
+            {
+                <option value="@shift.Value" selected="@(shift.Value == selectedShiftId)">@shift.Text</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-primary">Lọc</button>
+    </form>
+
+    <form class="card panel-card mb-3" asp-controller="DoctorSchedules" asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div class="card-body">
+            <div class="fw-semibold mb-1">Tạo lịch làm việc</div>
+            <div class="text-secondary small mb-3">Chọn ngày, chuyên khoa, phòng, ca, bác sĩ và số slot. Hệ thống chặn trùng bác sĩ hoặc trùng phòng trong cùng ngày, cùng ca.</div>
+
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-2">
+                    <label class="form-label">Ngày</label>
+                    <input class="form-control" name="StartDate" type="date" value="@selectedDate.ToString("yyyy-MM-dd")" required />
+                </div>
+                <div class="col-md-6 col-xl-2">
+                    <label class="form-label">Chuyên khoa</label>
+                    <select class="form-select js-department-select" name="DepartmentId" data-room-target="#create-room" required>
+                        <option value="">Chọn chuyên khoa</option>
+                        @foreach (var department in Model.Departments)
+                        {
+                            <option value="@department.Value">@department.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-2">
+                    <label class="form-label">Phòng khám</label>
+                    <select class="form-select js-room-select" id="create-room" name="RoomNumber" required disabled>
+                        <option value="">Chọn chuyên khoa trước</option>
+                        @foreach (var group in Model.DepartmentRooms)
+                        {
+                            foreach (var room in group.Value)
+                            {
+                                <option value="@room" data-department="@group.Key">@room</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-2">
+                    <label class="form-label">Ca</label>
+                    <select class="form-select" name="ShiftIds" required>
+                        <option value="">Chọn ca</option>
+                        @foreach (var shift in Model.Shifts)
+                        {
+                            <option value="@shift.Value">@shift.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <label class="form-label">Bác sĩ</label>
+                    <select class="form-select" name="DoctorId" required>
+                        <option value="">Chọn bác sĩ</option>
+                        @foreach (var doctor in Model.Doctors)
+                        {
+                            <option value="@doctor.Value">@doctor.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-1">
+                    <label class="form-label">Slot</label>
+                    <input class="form-control" name="AvailableSlots" type="number" min="1" max="100" value="10" required />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">Lưu lịch</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="admin-table-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 admin-table">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Phòng khám</th>
+                        <th>Ca</th>
+                        <th>Bác sĩ</th>
+                        <th>Chuyên khoa</th>
+                        <th>Số slot</th>
+                        <th>Slot còn lại</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Schedules.Count == 0)
+                {
+                    <tr><td colspan="9"><div class="empty-state">Chưa có lịch bác sĩ phù hợp bộ lọc.</div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Schedules)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@item.Date.ToString("dd/MM/yyyy")</div>
+                                <div class="text-secondary small">@DayText(item.Date.DayOfWeek)</div>
+                            </td>
+                            <td>@TextOrDefault(item.RoomNumber)</td>
+                            <td>
+                                <div>@TextOrDefault(item.ShiftName)</div>
+                                <div class="text-secondary small">@TextOrDefault(item.ShiftTime)</div>
+                            </td>
+                            <td>@TextOrDefault(item.DoctorName)</td>
+                            <td>@TextOrDefault(item.DepartmentName)</td>
+                            <td>@item.MaxSlots</td>
+                            <td>@item.AvailableSlots</td>
+                            <td><span class="admin-badge @(item.IsActive ? "admin-badge--success" : "admin-badge--muted")">@(item.IsActive ? "Có thể đặt" : "Tạm ngưng")</span></td>
+                            <td class="text-end">
+                                <form class="d-inline-flex flex-wrap justify-content-end gap-2" asp-controller="DoctorSchedules" asp-action="UpdateSchedule" method="post" onsubmit="return confirm('Cập nhật lịch làm việc này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="documentId" value="@item.DocumentId" />
+                                    <input type="hidden" name="date" value="@selectedDate.ToString("yyyy-MM-dd")" />
+                                    <input class="form-control form-control-sm" style="width: 120px" type="text" name="roomNumber" value="@item.RoomNumber" placeholder="Phòng" />
+                                    <input class="form-control form-control-sm" style="width: 82px" type="number" min="1" max="100" name="availableSlots" value="@item.AvailableSlots" />
+                                    <select class="form-select form-select-sm" style="width: 130px" name="isActive">
+                                        <option value="true" selected="@item.IsActive">Bật lịch</option>
+                                        <option value="false" selected="@(!item.IsActive)">Tạm ngưng</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Lưu</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<script>
+(() => {
+    function renderRooms(select) {
+        const targetSelector = select.dataset.roomTarget;
+        const roomSelect = document.querySelector(targetSelector);
+        if (!roomSelect) return;
+
+        const selected = roomSelect.dataset.selected || '';
+        const allOptions = Array.from(roomSelect.querySelectorAll('option[data-department]'));
+        let visibleCount = 0;
+
+        if (!select.value) {
+            allOptions.forEach(option => option.hidden = targetSelector === '#create-room');
+            roomSelect.disabled = targetSelector === '#create-room';
+            roomSelect.value = selected;
+            return;
+        }
+
+        allOptions.forEach(option => {
+            const visible = option.dataset.department === select.value;
+            option.hidden = !visible;
+            if (visible) visibleCount++;
+        });
+
+        roomSelect.disabled = visibleCount === 0;
+        if (selected && Array.from(roomSelect.options).some(x => x.value === selected && !x.hidden)) {
+            roomSelect.value = selected;
+        } else {
+            roomSelect.value = '';
+        }
+    }
+
+    document.querySelectorAll('.js-department-select').forEach(select => {
+        select.addEventListener('change', () => renderRooms(select));
+        renderRooms(select);
+    });
+})();
+</script>
+
+@functions {
+    private static string TextOrDefault(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Chưa cập nhật" : value;
+
+    private static string DayText(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Thứ 2",
+        DayOfWeek.Tuesday => "Thứ 3",
+        DayOfWeek.Wednesday => "Thứ 4",
+        DayOfWeek.Thursday => "Thứ 5",
+        DayOfWeek.Friday => "Thứ 6",
+        DayOfWeek.Saturday => "Thứ 7",
+        DayOfWeek.Sunday => "Chủ nhật",
+        _ => "-"
+    };
+}

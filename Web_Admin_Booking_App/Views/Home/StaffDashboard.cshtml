@@ -1,0 +1,79 @@
+@model Web_Admin_Booking_App.Models.StaffDashboardViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard nhân viên";
+}
+
+<section class="admin-hero-card mb-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <div class="eyebrow">Quầy vận hành</div>
+            <h1 class="admin-page-title">Dashboard nhân viên</h1>
+            <p class="admin-page-subtitle">Theo dõi lịch hôm nay, yêu cầu hủy, BHYT và thanh toán tiền mặt.</p>
+        </div>
+        <span class="admin-badge admin-badge--info">Staff workspace</span>
+    </div>
+</section>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Lịch hôm nay</div><div class="stat-card__value">@Model.TodayAppointmentCount</div></div></div></div>
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Chờ check-in</div><div class="stat-card__value">@Model.WaitingCheckInCount</div></div></div></div>
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Yêu cầu hủy</div><div class="stat-card__value">@Model.CancelRequestCount</div></div></div></div>
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">BHYT chờ duyệt</div><div class="stat-card__value">@Model.PendingInsuranceCount</div></div></div></div>
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Tiền mặt</div><div class="stat-card__value">@Model.CashPaymentCount</div></div></div></div>
+    <div class="col-md-6 col-xl-2"><div class="card stat-card"><div class="card-body"><div class="stat-card__label">Chưa thanh toán</div><div class="stat-card__value">@Model.UnpaidInvoiceCount</div></div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="panel-card__header">
+                    <div>
+                        <div class="fw-bold">Lịch hẹn hôm nay</div>
+                        <div class="text-secondary small">Danh sách cần tiếp nhận/check-in</div>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Appointments" asp-action="Index">Xem tất cả</a>
+                </div>
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm appointment-table mb-0">
+                        <thead><tr class="text-secondary"><th>Bệnh nhân</th><th>Bác sĩ</th><th>Giờ</th><th>Trạng thái</th></tr></thead>
+                        <tbody>
+                        @if (Model.TodayAppointments.Count == 0)
+                        {
+                            <tr><td colspan="4" class="empty-state">Chưa có lịch hôm nay.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.TodayAppointments)
+                            {
+                                <tr>
+                                    <td>@item.PatientName</td>
+                                    <td>@item.DoctorName</td>
+                                    <td>@item.ScheduledAt.ToString("HH:mm")</td>
+                                    <td><span class="admin-pill admin-pill--pending">@item.Status</span></td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card panel-card">
+            <div class="card-body">
+                <div class="fw-bold mb-3">Lối tắt nghiệp vụ</div>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-primary" asp-controller="Appointments" asp-action="Index">Quản lý lịch hẹn</a>
+                    <a class="btn btn-outline-primary" asp-controller="DoctorSchedules" asp-action="Index">Phân công lịch bác sĩ</a>
+                    <a class="btn btn-outline-primary" asp-controller="CancelRequests" asp-action="Index">Yêu cầu hủy lịch</a>
+                    <a class="btn btn-outline-primary" asp-controller="InsuranceApprovals" asp-action="Index">Duyệt BHYT</a>
+                    <a class="btn btn-outline-primary" asp-controller="Payments" asp-action="Index" asp-route-methodFilter="Cash" asp-route-statusFilter="Pending">Thanh toán tại quầy</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Patients" asp-action="Index">Bệnh nhân</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

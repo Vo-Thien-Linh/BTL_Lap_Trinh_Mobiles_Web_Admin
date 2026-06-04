@@ -127,9 +127,11 @@ public class DoctorScheduleRowViewModel
     public string DoctorId { get; set; } = string.Empty;
     public DateOnly Date { get; set; }
     public string DoctorName { get; set; } = string.Empty;
+    public string DepartmentId { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
     public string RoomId { get; set; } = string.Empty;
     public string RoomNumber { get; set; } = string.Empty;
+    public string ShiftId { get; set; } = string.Empty;
     public ShiftType ShiftType { get; set; } = ShiftType.Morning;
     public int MaxSlots { get; set; }
     public string ShiftName { get; set; } = string.Empty;

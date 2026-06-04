@@ -2,6 +2,9 @@
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var adminName = User.Identity?.Name ?? "Admin User";
+    var isAdmin = User.IsInRole("admin");
+    var isStaff = User.IsInRole("staff");
+    var roleText = isAdmin ? "Quản trị viên" : (isStaff ? "Nhân viên" : "Người dùng");
     var pageTitle = (ViewData["PageTitle"] ?? ViewData["Title"] ?? "Dashboard").ToString();
     var initials = adminName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var avatarText = initials.Length == 0
@@ -32,32 +35,52 @@
                 <div class="admin-brand__mark">+</div>
                 <div>
                     <div class="admin-brand__logo">MediAdmin</div>
-                    <div class="admin-brand__sub">Hệ thống Quản trị Y tế</div>
+                    <div class="admin-brand__sub">Hệ thống quản trị y tế</div>
                 </div>
             </div>
 
-            <a class="admin-cta" asp-controller="Appointments" asp-action="Create">
-                <span class="admin-nav__icon">+</span>
-                <span>Tạo lịch hẹn mới</span>
-            </a>
+            @if (isStaff)
+            {
+                <a class="admin-cta" asp-controller="Appointments" asp-action="Create">
+                    <span class="admin-nav__icon">+</span>
+                    <span>Tạo lịch hẹn mới</span>
+                </a>
+            }
 
             <nav class="admin-nav" aria-label="Điều hướng quản trị">
-                <a class="admin-nav__link @(Active("Home", "Index"))" asp-controller="Home" asp-action="Index"><span class="admin-nav__icon">D</span><span>Dashboard</span></a>
-                <a class="admin-nav__link @(Active("Doctors"))" asp-controller="Doctors" asp-action="Index"><span class="admin-nav__icon">BS</span><span>Bác sĩ</span></a>
-                <a class="admin-nav__link @(Active("Specialties"))" asp-controller="Specialties" asp-action="Index"><span class="admin-nav__icon">K</span><span>Chuyên khoa</span></a>
-                <a class="admin-nav__link @(Active("Appointments"))" asp-controller="Appointments" asp-action="Index"><span class="admin-nav__icon">LH</span><span>Lịch hẹn</span></a>
-                <a class="admin-nav__link @(Active("MedicalRecords"))" asp-controller="MedicalRecords" asp-action="Index"><span class="admin-nav__icon">BA</span><span>Bệnh án</span></a>
-                <a class="admin-nav__link @(Active("Payments"))" asp-controller="Payments" asp-action="Index"><span class="admin-nav__icon">$</span><span>Thanh toán</span></a>
-                <a class="admin-nav__link @(Active("Medicines"))" asp-controller="Medicines" asp-action="Index"><span class="admin-nav__icon">T</span><span>Thuốc</span></a>
-                <a class="admin-nav__link @(Active("Patients"))" asp-controller="Patients" asp-action="Index"><span class="admin-nav__icon">BN</span><span>Bệnh nhân</span></a>
-                <a class="admin-nav__link @(Active("WorkShifts"))" asp-controller="WorkShifts" asp-action="Index"><span class="admin-nav__icon">CA</span><span>Ca làm việc</span></a>
+                <a class="admin-nav__link @(Active("Home", isStaff ? "StaffDashboard" : "Index"))" asp-controller="Home" asp-action="@(isStaff ? "StaffDashboard" : "Index")">
+                    <span class="admin-nav__icon">D</span>
+                    <span>@(isStaff ? "Dashboard nhân viên" : "Dashboard")</span>
+                </a>
+
+                @if (isAdmin)
+                {
+                    <a class="admin-nav__link @(Active("Doctors"))" asp-controller="Doctors" asp-action="Index"><span class="admin-nav__icon">BS</span><span>Bác sĩ</span></a>
+                    <a class="admin-nav__link @(Active("Staff"))" asp-controller="Staff" asp-action="Index"><span class="admin-nav__icon">NV</span><span>Nhân viên</span></a>
+                    <a class="admin-nav__link @(Active("Specialties"))" asp-controller="Specialties" asp-action="Index"><span class="admin-nav__icon">K</span><span>Chuyên khoa</span></a>
+                    <a class="admin-nav__link @(Active("Medicines"))" asp-controller="Medicines" asp-action="Index"><span class="admin-nav__icon">T</span><span>Thuốc</span></a>
+                    <a class="admin-nav__link @(Active("WorkShifts"))" asp-controller="WorkShifts" asp-action="Index"><span class="admin-nav__icon">CA</span><span>Cấu hình ca chuẩn</span></a>
+                }
+
+                @if (isStaff)
+                {
+                    <a class="admin-nav__link @(Active("Appointments"))" asp-controller="Appointments" asp-action="Index"><span class="admin-nav__icon">LH</span><span>Lịch hẹn</span></a>
+                    <a class="admin-nav__link @(Active("DoctorSchedules"))" asp-controller="DoctorSchedules" asp-action="Index"><span class="admin-nav__icon">PC</span><span>Phân công lịch bác sĩ</span></a>
+                    <a class="admin-nav__link @(Active("CancelRequests"))" asp-controller="CancelRequests" asp-action="Index"><span class="admin-nav__icon">HU</span><span>Yêu cầu hủy lịch</span></a>
+                    <a class="admin-nav__link @(Active("InsuranceApprovals"))" asp-controller="InsuranceApprovals" asp-action="Index"><span class="admin-nav__icon">BH</span><span>Duyệt BHYT</span></a>
+                    <a class="admin-nav__link @(Active("Payments"))" asp-controller="Payments" asp-action="Index" asp-route-methodFilter="Cash" asp-route-statusFilter="Pending"><span class="admin-nav__icon">$</span><span>Thanh toán tại quầy</span></a>
+                    <a class="admin-nav__link @(Active("Patients"))" asp-controller="Patients" asp-action="Index"><span class="admin-nav__icon">BN</span><span>Bệnh nhân</span></a>
+                }
             </nav>
 
             <div class="admin-sidebar__bottom">
-                <a class="admin-nav__link admin-sidebar-action" href="#">
-                    <span class="admin-nav__icon">C</span>
-                    <span>Cài đặt</span>
-                </a>
+                @if (isAdmin)
+                {
+                    <a class="admin-nav__link admin-sidebar-action" href="#">
+                        <span class="admin-nav__icon">C</span>
+                        <span>Cấu hình</span>
+                    </a>
+                }
 
                 <form asp-controller="Auth" asp-action="Logout" method="post" class="admin-logout-form">
                     @Html.AntiForgeryToken()
@@ -76,7 +99,7 @@
                     <div class="admin-topbar__subtitle">Quản trị dữ liệu bệnh viện theo thời gian thực</div>
                 </div>
                 <div class="admin-topbar__search">
-                    <span aria-hidden="true">⌕</span>
+                    <span aria-hidden="true">S</span>
                     <input type="search" placeholder="Tìm kiếm bác sĩ, khoa, bệnh nhân..." />
                 </div>
                 <div class="admin-topbar__right">
@@ -85,7 +108,7 @@
                     <div class="admin-user">
                         <div class="admin-user__meta">
                             <div class="admin-user__name">@adminName</div>
-                            <div class="admin-user__role">Administrator</div>
+                            <div class="admin-user__role">@roleText</div>
                         </div>
                         <div class="admin-user__avatar">@avatarText</div>
                     </div>
