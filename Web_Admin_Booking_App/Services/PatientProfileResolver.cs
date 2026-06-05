@@ -258,21 +258,16 @@ public sealed class PatientProfileResolver
             }
         }
 
-        foreach (var collectionName in GetPatientCollections())
-        {
-            var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
-            foreach (var doc in snapshot.Documents.Where(x => x.Exists))
-            {
-                AddToGroup(groups, ResolvePatientKey(doc), doc);
-            }
-        }
-
         foreach (var collectionName in new[] { "health_insurances" })
         {
             var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
             foreach (var doc in snapshot.Documents.Where(x => x.Exists))
             {
-                AddToGroup(groups, ResolvePatientKey(doc), doc);
+                var key = ResolvePatientKey(doc);
+                if (groups.ContainsKey(key))
+                {
+                    AddToGroup(groups, key, doc);
+                }
             }
         }
 
@@ -289,12 +284,12 @@ public sealed class PatientProfileResolver
             if (snap.Exists) snapshots[snap.Reference.Path] = snap;
         }
 
-        foreach (var collectionName in GetUserCollections().Concat(GetPatientCollections()).Concat(new[] { "health_insurances" }))
+        foreach (var collectionName in GetUserCollections().Concat(new[] { "health_insurances" }))
         {
             await AddDocumentAsync(_firestore.Collection(collectionName).Document(id));
         }
 
-        foreach (var collectionName in GetUserCollections().Concat(GetPatientCollections()).Concat(new[] { "health_insurances" }))
+        foreach (var collectionName in GetUserCollections().Concat(new[] { "health_insurances" }))
         {
             foreach (var field in new[] { "uid", "userId", "patientId", "documentId", "UserId", "PatientId" })
             {
@@ -510,20 +505,14 @@ public sealed class PatientProfileResolver
     private IEnumerable<string> GetUserCollections()
     {
         return _settings.UserCollections.DefaultIfEmpty("users")
-            .Concat(new[] { "users", "Users" })
+            .Concat(new[] { "users" })
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IEnumerable<string> GetPatientCollections()
-    {
-        return new[] { "patients", "Patients" };
-    }
-
     private static bool IsPatientProfileCollection(string collectionName)
     {
-        return collectionName.Equals("users", StringComparison.OrdinalIgnoreCase) ||
-            collectionName.Equals("patients", StringComparison.OrdinalIgnoreCase);
+        return collectionName.Equals("users", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsInsuranceCollection(string collectionName)
@@ -534,7 +523,6 @@ public sealed class PatientProfileResolver
     private static int SourceRank(string collectionName)
     {
         if (collectionName.Equals("users", StringComparison.OrdinalIgnoreCase)) return 0;
-        if (collectionName.Equals("patients", StringComparison.OrdinalIgnoreCase)) return 1;
         if (collectionName.Equals("health_insurances", StringComparison.OrdinalIgnoreCase)) return 2;
         return 3;
     }

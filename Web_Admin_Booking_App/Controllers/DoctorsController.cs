@@ -100,6 +100,72 @@ public class DoctorsController : Controller
         return View(doctor);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Edit(string id, CancellationToken cancellationToken)
+    {
+        var model = await _dataService.GetDoctorEditAsync(id, cancellationToken);
+        if (model is null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy bác sĩ trên Firebase.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(await BuildDoctorEditModelAsync(model, cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(DoctorEditViewModel model, CancellationToken cancellationToken)
+    {
+        NormalizeDoctorEditModel(model);
+        ValidateAvatarFile(model);
+
+        if (!ModelState.IsValid)
+        {
+            return View(await BuildDoctorEditModelAsync(model, cancellationToken));
+        }
+
+        var unique = await _dataService.CheckUserUniqueFieldsAsync(
+            model.Email,
+            model.Phone,
+            model.Cccd,
+            string.IsNullOrWhiteSpace(model.UserId) ? null : model.UserId,
+            cancellationToken);
+
+        if (unique.PhoneExists)
+        {
+            ModelState.AddModelError(nameof(model.Phone), "Số điện thoại này đã tồn tại trong collection users.");
+        }
+
+        if (unique.CccdExists)
+        {
+            ModelState.AddModelError(nameof(model.Cccd), "CCCD này đã tồn tại trong collection users.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(await BuildDoctorEditModelAsync(model, cancellationToken));
+        }
+
+        try
+        {
+            var newAvatarUrl = await SaveAvatarFileAsync(model.AvatarFile);
+            if (!string.IsNullOrWhiteSpace(newAvatarUrl))
+            {
+                model.AvatarUrl = newAvatarUrl;
+            }
+
+            await _dataService.UpdateDoctorAsync(model, CancellationToken.None);
+            TempData["InfoMessage"] = "Đã cập nhật hồ sơ bác sĩ.";
+            return RedirectToAction(nameof(Details), new { id = model.DocumentId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(await BuildDoctorEditModelAsync(model, cancellationToken));
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(string id, CancellationToken cancellationToken)
@@ -120,6 +186,25 @@ public class DoctorsController : Controller
 
     private static void NormalizeDoctorCreateModel(DoctorCreateViewModel model)
     {
+        model.FullName = model.FullName.Trim();
+        model.Email = model.Email.Trim().ToLowerInvariant();
+        model.Phone = DigitsOnly(model.Phone);
+        model.Cccd = DigitsOnly(model.Cccd);
+        model.DepartmentId = model.DepartmentId.Trim();
+        model.Specialization = model.Specialization.Trim();
+        model.LicenseNumber = model.LicenseNumber.Trim();
+        model.UserStatus = model.UserStatus.Trim();
+        model.VerificationStatus = model.VerificationStatus.Trim();
+        if (!model.IsFeatured)
+        {
+            model.FeaturedRank = null;
+        }
+    }
+
+    private static void NormalizeDoctorEditModel(DoctorEditViewModel model)
+    {
+        model.DocumentId = model.DocumentId.Trim();
+        model.UserId = model.UserId.Trim();
         model.FullName = model.FullName.Trim();
         model.Email = model.Email.Trim().ToLowerInvariant();
         model.Phone = DigitsOnly(model.Phone);
@@ -165,6 +250,31 @@ public class DoctorsController : Controller
         }
     }
 
+    private void ValidateAvatarFile(DoctorEditViewModel model)
+    {
+        if (model.AvatarFile is null || model.AvatarFile.Length == 0) return;
+
+        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp"
+        };
+
+        var extension = Path.GetExtension(model.AvatarFile.FileName);
+        if (!allowedExtensions.Contains(extension))
+        {
+            ModelState.AddModelError(nameof(model.AvatarFile), "Ảnh đại diện chỉ hỗ trợ JPG, PNG hoặc WEBP.");
+        }
+
+        const long maxBytes = 2 * 1024 * 1024;
+        if (model.AvatarFile.Length > maxBytes)
+        {
+            ModelState.AddModelError(nameof(model.AvatarFile), "Ảnh đại diện không được vượt quá 2MB.");
+        }
+    }
+
     private async Task<string?> SaveAvatarFileAsync(IFormFile? file)
     {
         if (file is null || file.Length == 0) return null;
@@ -184,6 +294,14 @@ public class DoctorsController : Controller
 
     private async Task<DoctorCreateViewModel> BuildDoctorCreateModelAsync(
         DoctorCreateViewModel model,
+        CancellationToken cancellationToken)
+    {
+        model.Departments = await _dataService.GetDepartmentOptionsAsync(cancellationToken);
+        return model;
+    }
+
+    private async Task<DoctorEditViewModel> BuildDoctorEditModelAsync(
+        DoctorEditViewModel model,
         CancellationToken cancellationToken)
     {
         model.Departments = await _dataService.GetDepartmentOptionsAsync(cancellationToken);

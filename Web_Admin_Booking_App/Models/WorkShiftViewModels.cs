@@ -44,7 +44,6 @@ public class WorkScheduleGenerateViewModel
     [Required(ErrorMessage = "Vui lòng chọn bác sĩ.")]
     public string DoctorId { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng chọn khoa.")]
     public string DepartmentId { get; set; } = string.Empty;
 
     public string RoomId { get; set; } = string.Empty;
@@ -52,11 +51,11 @@ public class WorkScheduleGenerateViewModel
     [Required(ErrorMessage = "Vui lòng chọn phòng.")]
     public string RoomNumber { get; set; } = string.Empty;
 
-    [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một ca làm việc.")]
     public List<string> ShiftIds { get; set; } = new();
 
-    [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một thứ trong tuần.")]
     public List<DayOfWeek> DaysOfWeek { get; set; } = new();
+
+    public List<string> DayShiftSelections { get; set; } = new();
 
     [Required(ErrorMessage = "Vui lòng chọn ngày bắt đầu.")]
     public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);

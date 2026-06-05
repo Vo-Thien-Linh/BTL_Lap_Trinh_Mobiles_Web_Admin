@@ -1,4 +1,4 @@
-@model Web_Admin_Booking_App.Models.SpecialtyUpsertViewModel
+﻿@model Web_Admin_Booking_App.Models.SpecialtyUpsertViewModel
 @using Web_Admin_Booking_App.Models
 @{
     var isEdit = !string.IsNullOrWhiteSpace(Model.Id);
@@ -19,33 +19,33 @@
         <div class="admin-form-main">
             <section class="admin-form-card section-accent--professional">
                 <div class="admin-form-card__header">
-                    <h2 class="admin-form-card__title">Thông tin chuyên khoa</h2>
-                    <p class="admin-form-card__subtitle">Tên, mã khoa, trạng thái và biểu tượng hiển thị.</p>
+                    <h2 class="admin-form-card__title">ThÃ´ng tin chuyÃªn khoa</h2>
+                    <p class="admin-form-card__subtitle">TÃªn, mÃ£ khoa, tráº¡ng thÃ¡i vÃ  biá»ƒu tÆ°á»£ng hiá»ƒn thá»‹.</p>
                 </div>
                 <div class="admin-form-card__body">
                     <div class="admin-form-grid">
                         <div>
                             <label asp-for="Name" class="form-label"></label>
-                            <input asp-for="Name" class="form-control js-specialty-name" placeholder="VD: Khoa Tim mạch" list="specialtyNameSuggestions" autocomplete="off" data-preview-name />
+                            <input asp-for="Name" class="form-control js-specialty-name" placeholder="VD: Khoa Tim máº¡ch" list="specialtyNameSuggestions" autocomplete="off" data-preview-name />
                             <datalist id="specialtyNameSuggestions">
                                 @foreach (var name in Model.ExistingNames)
                                 {
                                     <option value="@name"></option>
                                 }
                             </datalist>
-                            <div class="admin-input-hint js-name-warning d-none">Tên này đã hoặc gần giống chuyên khoa đang có.</div>
+                            <div class="admin-input-hint js-name-warning d-none">TÃªn nÃ y Ä‘Ã£ hoáº·c gáº§n giá»‘ng chuyÃªn khoa Ä‘ang cÃ³.</div>
                             <span asp-validation-for="Name" class="text-danger"></span>
                         </div>
                         <div>
-                            <label class="form-label">Mã khoa</label>
+                            <label class="form-label">MÃ£ khoa</label>
                             <input class="form-control bg-light text-secondary" value="@(isEdit && !string.IsNullOrWhiteSpace(Model.Code) ? Model.Code : Model.CodePreview)" readonly />
-                            <div class="admin-input-hint">Admin không cần nhập mã khoa thủ công.</div>
+                            <div class="admin-input-hint">Admin khÃ´ng cáº§n nháº­p mÃ£ khoa thá»§ cÃ´ng.</div>
                         </div>
                         <div>
                             <label asp-for="Status" class="form-label"></label>
                             <select asp-for="Status" class="form-select">
-                                <option value="Active">Đang hoạt động</option>
-                                <option value="Paused">Tạm ngưng</option>
+                                <option value="Active">Äang hoáº¡t Ä‘á»™ng</option>
+                                <option value="Paused">Táº¡m ngÆ°ng</option>
                             </select>
                             <span asp-validation-for="Status" class="text-danger"></span>
                         </div>
@@ -60,30 +60,43 @@
 
             <section class="admin-form-card section-accent--account">
                 <div class="admin-form-card__header">
-                    <h2 class="admin-form-card__title">Nhân sự và vị trí</h2>
-                    <p class="admin-form-card__subtitle">Trưởng khoa, số bác sĩ, vị trí và liên hệ của chuyên khoa.</p>
+                    <h2 class="admin-form-card__title">NhÃ¢n sá»± vÃ  vá»‹ trÃ­</h2>
+                    <p class="admin-form-card__subtitle">TrÆ°á»Ÿng khoa, sá»‘ bÃ¡c sÄ©, vá»‹ trÃ­ vÃ  liÃªn há»‡ cá»§a chuyÃªn khoa.</p>
                 </div>
                 <div class="admin-form-card__body">
                     <div class="admin-form-grid">
-                        <div>
-                            <label asp-for="HeadDoctor" class="form-label"></label>
-                            <input asp-for="HeadDoctor" class="form-control" placeholder="VD: BS. Nguyễn Văn A" list="doctorSuggestions" autocomplete="off" />
-                            <datalist id="doctorSuggestions">
-                                @foreach (var doctor in Model.DoctorSuggestions)
+                        @if (isEdit)
+                        {
+                            <div>
+                                <label asp-for="HeadDoctor" class="form-label"></label>
+                                <input asp-for="HeadDoctor" class="form-control" placeholder="Chọn bác sĩ thuộc khoa này" list="doctorSuggestions" autocomplete="off" />
+                                <datalist id="doctorSuggestions">
+                                    @foreach (var doctor in Model.DoctorSuggestions)
+                                    {
+                                        <option value="@doctor"></option>
+                                    }
+                                </datalist>
+                                @if (Model.DoctorSuggestions.Count == 0)
                                 {
-                                    <option value="@doctor"></option>
+                                    <div class="admin-input-hint">Khoa này chưa có bác sĩ. Hãy gán bác sĩ vào khoa trước.</div>
                                 }
-                            </datalist>
-                            <span asp-validation-for="HeadDoctor" class="text-danger"></span>
-                        </div>
-                        <div>
-                            <label asp-for="DoctorCount" class="form-label"></label>
-                            <input asp-for="DoctorCount" class="form-control" min="0" placeholder="VD: 8" />
-                            <span asp-validation-for="DoctorCount" class="text-danger"></span>
-                        </div>
+                                <span asp-validation-for="HeadDoctor" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="DoctorCount" class="form-label"></label>
+                                <input asp-for="DoctorCount" class="form-control bg-light text-secondary" readonly />
+                                <div class="admin-input-hint">Số bác sĩ được thống kê từ collection Doctors.</div>
+                                <span asp-validation-for="DoctorCount" class="text-danger"></span>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="HeadDoctor" value="" />
+                            <input type="hidden" asp-for="DoctorCount" value="0" />
+                        }
                         <div>
                             <label asp-for="LocationNote" class="form-label"></label>
-                            <input asp-for="LocationNote" class="form-control" placeholder="VD: Tầng 4 - Khu A" list="locationSuggestions" autocomplete="off" />
+                            <input asp-for="LocationNote" class="form-control" placeholder="VD: Táº§ng 4 - Khu A" list="locationSuggestions" autocomplete="off" />
                             <datalist id="locationSuggestions">
                                 @foreach (var location in Model.LocationSuggestions)
                                 {
@@ -103,8 +116,8 @@
 
             <section class="admin-form-card section-accent--admin">
                 <div class="admin-form-card__header">
-                    <h2 class="admin-form-card__title">Mô tả và phòng khám</h2>
-                    <p class="admin-form-card__subtitle">Logo, mô tả ngắn và danh sách phòng của chuyên khoa.</p>
+                    <h2 class="admin-form-card__title">MÃ´ táº£ vÃ  phÃ²ng khÃ¡m</h2>
+                    <p class="admin-form-card__subtitle">Logo, mÃ´ táº£ ngáº¯n vÃ  danh sÃ¡ch phÃ²ng cá»§a chuyÃªn khoa.</p>
                 </div>
                 <div class="admin-form-card__body">
                     <div class="admin-form-grid">
@@ -113,19 +126,19 @@
                             <input asp-for="LogoFile" class="form-control" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
                             @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
                             {
-                                <div class="admin-input-hint text-break-soft">Logo hiện tại: <span class="technical-value">@Model.ImageUrl</span></div>
+                                <div class="admin-input-hint text-break-soft">Logo hiá»‡n táº¡i: <span class="technical-value">@Model.ImageUrl</span></div>
                             }
                             <span asp-validation-for="LogoFile" class="text-danger"></span>
                         </div>
                         <div class="is-full">
                             <label asp-for="Description" class="form-label"></label>
-                            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả ngắn về khoa"></textarea>
+                            <textarea asp-for="Description" class="form-control" rows="3" placeholder="MÃ´ táº£ ngáº¯n vá» khoa"></textarea>
                             <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
                         <div class="is-full">
                             <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                 <label asp-for="RoomsText" class="form-label mb-0"></label>
-                                <button class="btn btn-sm btn-outline-primary" type="button" id="addRoomButton">+ Thêm phòng</button>
+                                <button class="btn btn-sm btn-outline-primary" type="button" id="addRoomButton">+ ThÃªm phÃ²ng</button>
                             </div>
                             <div id="roomList" class="d-grid gap-2">
                                 @{
@@ -135,31 +148,31 @@
                                 {
                                     <div class="input-group room-row">
                                         <input class="form-control" name="RoomNumbers" value="@rooms[i]" placeholder="VD: P.101" />
-                                        <button class="btn btn-outline-danger room-remove" type="button">Xóa</button>
+                                        <button class="btn btn-outline-danger room-remove" type="button">XÃ³a</button>
                                     </div>
                                 }
                             </div>
-                            <div class="admin-input-hint">Mỗi ô là một phòng. Web sẽ lưu theo cấu trúc phòng hiện tại.</div>
+                            <div class="admin-input-hint">Má»—i Ã´ lÃ  má»™t phÃ²ng. Web sáº½ lÆ°u theo cáº¥u trÃºc phÃ²ng hiá»‡n táº¡i.</div>
                         </div>
                     </div>
                 </div>
             </section>
 
             <div class="admin-form-actions">
-                <a class="btn btn-outline-secondary px-4" asp-controller="Specialties" asp-action="Index">Hủy</a>
-                <button type="submit" class="btn btn-primary px-4">@(isEdit ? "Lưu thay đổi" : "Lưu chuyên khoa")</button>
+                <a class="btn btn-outline-secondary px-4" asp-controller="Specialties" asp-action="Index">Há»§y</a>
+                <button type="submit" class="btn btn-primary px-4">@(isEdit ? "LÆ°u thay Ä‘á»•i" : "LÆ°u chuyÃªn khoa")</button>
             </div>
         </div>
 
         <aside class="admin-form-aside">
             <div class="admin-help-card">
                 <div class="admin-help-card__avatar" data-preview-avatar>+</div>
-                <h2 class="h5 fw-bold mb-1" data-preview-title>@(string.IsNullOrWhiteSpace(Model.Name) ? "Chuyên khoa" : Model.Name)</h2>
-                <div class="text-secondary">Mã khoa sẽ được hệ thống quản lý tự động.</div>
+                <h2 class="h5 fw-bold mb-1" data-preview-title>@(string.IsNullOrWhiteSpace(Model.Name) ? "ChuyÃªn khoa" : Model.Name)</h2>
+                <div class="text-secondary">MÃ£ khoa sáº½ Ä‘Æ°á»£c há»‡ thá»‘ng quáº£n lÃ½ tá»± Ä‘á»™ng.</div>
                 <ul class="admin-help-list">
-                    <li>Tên chuyên khoa không nên trùng.</li>
-                    <li>Mã khoa dùng để liên kết với bác sĩ/lịch khám.</li>
-                    <li>Trưởng khoa nên chọn từ danh sách bác sĩ có sẵn.</li>
+                    <li>TÃªn chuyÃªn khoa khÃ´ng nÃªn trÃ¹ng.</li>
+                    <li>MÃ£ khoa dÃ¹ng Ä‘á»ƒ liÃªn káº¿t vá»›i bÃ¡c sÄ©/lá»‹ch khÃ¡m.</li>
+                    <li>TrÆ°á»Ÿng khoa nÃªn chá»n tá»« danh sÃ¡ch bÃ¡c sÄ© cÃ³ sáºµn.</li>
                 </ul>
             </div>
         </aside>
@@ -187,7 +200,7 @@
     const nameInput = document.querySelector('[data-preview-name]');
     const previewTitle = document.querySelector('[data-preview-title]');
     const syncPreview = () => {
-        if (previewTitle) previewTitle.textContent = nameInput?.value || 'Chuyên khoa';
+        if (previewTitle) previewTitle.textContent = nameInput?.value || 'ChuyÃªn khoa';
     };
     nameInput?.addEventListener('input', syncPreview);
     syncPreview();
@@ -210,7 +223,7 @@
     addRoomButton?.addEventListener('click', () => {
         const row = document.createElement('div');
         row.className = 'input-group room-row';
-        row.innerHTML = '<input class="form-control" name="RoomNumbers" placeholder="VD: P.101" /><button class="btn btn-outline-danger room-remove" type="button">Xóa</button>';
+        row.innerHTML = '<input class="form-control" name="RoomNumbers" placeholder="VD: P.101" /><button class="btn btn-outline-danger room-remove" type="button">XÃ³a</button>';
         roomList.appendChild(row);
         bindRemove(row.querySelector('.room-remove'));
         row.querySelector('input')?.focus();

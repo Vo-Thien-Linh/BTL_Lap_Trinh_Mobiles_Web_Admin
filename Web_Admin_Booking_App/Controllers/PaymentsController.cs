@@ -84,6 +84,34 @@ public class PaymentsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> ConfirmBankTransfer(string id, string? sourceCollection, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            await _dataService.ConfirmBankTransferPaymentAsync(
+                id,
+                sourceCollection,
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                User.Identity?.Name ?? string.Empty,
+                CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã duyệt thanh toán chuyển khoản.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { methodFilter = "BankTransfer", statusFilter = "Pending" });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> MarkFailed(string id, string? sourceCollection, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(id))
