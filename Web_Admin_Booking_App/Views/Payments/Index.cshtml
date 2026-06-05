@@ -171,6 +171,15 @@
                                             <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Xác nhận đã thu tiền mặt cho hóa đơn @t.InvoiceCode?');">Xác nhận thanh toán tiền mặt</button>
                                         </form>
                                     }
+                                    else if (t.Status == Web_Admin_Booking_App.Models.TransactionStatus.Pending && t.Method == Web_Admin_Booking_App.Models.PaymentMethod.BankTransfer)
+                                    {
+                                        <form asp-controller="Payments" asp-action="ConfirmBankTransfer" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@t.Id" />
+                                            <input type="hidden" name="sourceCollection" value="@t.SourceCollection" />
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Duyệt thanh toán chuyển khoản cho hóa đơn @t.InvoiceCode?');">Duyệt chuyển khoản</button>
+                                        </form>
+                                    }
                                     else
                                     {
                                         <span class="text-secondary small">-</span>

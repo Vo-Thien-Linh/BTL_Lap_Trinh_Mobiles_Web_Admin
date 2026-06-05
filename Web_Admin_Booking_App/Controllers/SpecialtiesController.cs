@@ -84,9 +84,18 @@ public sealed class SpecialtiesController : Controller
             return View(model);
         }
 
-        await CreateSpecialtyAsync(model);
-        TempData["SuccessMessage"] = "Đã thêm chuyên khoa mới.";
-        return RedirectToAction(nameof(Index));
+        try
+        {
+            var departmentId = await CreateSpecialtyAsync(model);
+            TempData["SuccessMessage"] = $"Đã thêm chuyên khoa mới. Mã khoa: {departmentId}.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, $"Không lưu được chuyên khoa lên Firebase: {ex.Message}");
+            model = await BuildUpsertModelAsync(model, CancellationToken.None);
+            return View(model);
+        }
     }
 
     [HttpGet]
@@ -137,9 +146,18 @@ public sealed class SpecialtiesController : Controller
         var docRef = await FindSpecialtyDocumentReferenceAsync(model.Id, CancellationToken.None);
         if (docRef == null) return NotFound();
 
-        await docRef.SetAsync(ToFirestorePayload(model, false), SetOptions.MergeAll, CancellationToken.None);
-        TempData["SuccessMessage"] = "Đã cập nhật chuyên khoa.";
-        return RedirectToAction(nameof(Index));
+        try
+        {
+            await docRef.SetAsync(ToFirestorePayload(model, false), SetOptions.MergeAll, CancellationToken.None);
+            TempData["SuccessMessage"] = "Đã cập nhật chuyên khoa.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, $"Không lưu được chuyên khoa lên Firebase: {ex.Message}");
+            model = await BuildUpsertModelAsync(model, CancellationToken.None);
+            return View(model);
+        }
     }
 
     [HttpPost]
@@ -167,7 +185,9 @@ public sealed class SpecialtiesController : Controller
         model.ExistingNames = specialties.Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         model.ExistingCodes = specialties.Select(x => x.Code).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         model.LocationSuggestions = specialties.Select(x => x.LocationNote).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
-        model.DoctorSuggestions = await LoadDoctorSuggestionsAsync(cancellationToken);
+        model.DoctorSuggestions = string.IsNullOrWhiteSpace(model.Id)
+            ? new List<string>()
+            : await LoadDoctorSuggestionsAsync(model.Id, cancellationToken);
         return model;
     }
 
@@ -201,21 +221,49 @@ public sealed class SpecialtiesController : Controller
         return !legacySnapshot.Exists;
     }
 
-    private async Task<List<string>> LoadDoctorSuggestionsAsync(CancellationToken cancellationToken)
+    private async Task<List<string>> LoadDoctorSuggestionsAsync(string departmentId, CancellationToken cancellationToken)
     {
-        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var collectionName in new[] { "users" })
-        {
-            var snapshot = await _firestore.Collection(collectionName).GetSnapshotAsync(cancellationToken);
-            foreach (var doc in snapshot.Documents)
-            {
-                var role = GetString(doc, "role", "Role")?.Trim().ToLowerInvariant();
-                if (role != "doctor") continue;
+        if (string.IsNullOrWhiteSpace(departmentId)) return new List<string>();
 
-                var name = GetString(doc, "fullName", "doctorName", "name", "username", "FullName");
-                if (!string.IsNullOrWhiteSpace(name)) result.Add(name);
+        var userNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var usersSnapshot = await _firestore.Collection("users").GetSnapshotAsync(cancellationToken);
+        foreach (var doc in usersSnapshot.Documents)
+        {
+            var role = GetString(doc, "role", "Role")?.Trim().ToLowerInvariant();
+            if (role != "doctor") continue;
+
+            var uid = GetString(doc, "uid", "Uid", "userId", "UserId") ?? doc.Id;
+            var name = GetString(doc, "fullName", "doctorName", "name", "username", "FullName");
+            if (!string.IsNullOrWhiteSpace(uid) && !string.IsNullOrWhiteSpace(name))
+            {
+                userNames[uid] = name;
             }
         }
+
+        foreach (var collectionName in new[] { "Doctors", "doctors" })
+        {
+            var doctorsSnapshot = await _firestore.Collection(collectionName)
+                .WhereEqualTo("departmentId", departmentId.Trim())
+                .GetSnapshotAsync(cancellationToken);
+
+            foreach (var doctorDoc in doctorsSnapshot.Documents.Where(x => x.Exists))
+            {
+                var userId = GetString(doctorDoc, "userId", "UserId");
+                var name = GetString(doctorDoc, "fullName", "doctorName", "name");
+                if (string.IsNullOrWhiteSpace(name) &&
+                    !string.IsNullOrWhiteSpace(userId) &&
+                    userNames.TryGetValue(userId, out var userName))
+                {
+                    name = userName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(name)) result.Add(name);
+            }
+
+            if (result.Count > 0) break;
+        }
+
         return result.OrderBy(x => x).ToList();
     }
 
@@ -282,10 +330,10 @@ public sealed class SpecialtiesController : Controller
             ["description"] = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
             ["phone"] = string.IsNullOrWhiteSpace(model.Phone) ? null : NormalizeDigits(model.Phone),
             ["imageUrl"] = string.IsNullOrWhiteSpace(model.ImageUrl) ? null : model.ImageUrl.Trim(),
-            ["headDoctor"] = model.HeadDoctor.Trim(),
-            ["doctorCount"] = Math.Max(0, model.DoctorCount),
-            ["location"] = model.LocationNote.Trim(),
-            ["locationNote"] = model.LocationNote.Trim(),
+            ["headDoctor"] = isCreate ? string.Empty : model.HeadDoctor?.Trim() ?? string.Empty,
+            ["doctorCount"] = isCreate ? 0 : Math.Max(0, model.DoctorCount),
+            ["location"] = model.LocationNote?.Trim() ?? string.Empty,
+            ["locationNote"] = model.LocationNote?.Trim() ?? string.Empty,
             ["status"] = model.Status == SpecialtyStatus.Active ? "active" : "paused",
             ["isActive"] = model.Status == SpecialtyStatus.Active,
             ["icon"] = model.Icon.ToString(),
@@ -296,13 +344,16 @@ public sealed class SpecialtiesController : Controller
         {
             payload["code"] = model.Code.Trim();
             payload["departmentCode"] = model.Code.Trim();
+            payload["departmentId"] = model.Code.Trim();
         }
 
         var rooms = BuildRoomPayload(model.RoomNumbers);
-        if (rooms.Count > 0)
-        {
-            payload["rooms"] = rooms;
-        }
+        payload["rooms"] = rooms;
+        payload["roomNames"] = model.RoomNumbers
+            .Select(x => x?.Trim() ?? string.Empty)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (isCreate)
         {

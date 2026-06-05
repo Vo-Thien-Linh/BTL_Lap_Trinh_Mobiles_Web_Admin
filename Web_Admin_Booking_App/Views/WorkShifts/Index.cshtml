@@ -1,23 +1,118 @@
 @model Web_Admin_Booking_App.Models.WorkShiftsIndexViewModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Cấu hình ca chuẩn";
+    ViewData["Title"] = "Quản lý lịch làm việc";
     var previousWeek = Model.WeeklyTable.WeekStart.AddDays(-7);
     var nextWeek = Model.WeeklyTable.WeekStart.AddDays(7);
 }
 
 <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
     <div>
-        <h1 class="h4 fw-bold mb-1">Cấu hình ca chuẩn</h1>
-        <div class="text-secondary">Theo dõi khung ca, phòng khám và lịch tuần. Phân công lịch bác sĩ hằng ngày do Staff xử lý tại màn Phân công lịch bác sĩ.</div>
+        <h1 class="h4 fw-bold mb-1">Quản lý lịch làm việc bác sĩ</h1>
+        <div class="text-secondary">Phân lịch theo từng ngày và từng ca, sau đó kiểm tra ngay trên bảng tuần.</div>
     </div>
-    <span class="badge text-bg-light border">Admin chỉ xem/cấu hình ca chuẩn</span>
+    <div class="btn-group" role="group" aria-label="Chế độ xem">
+        <a class="btn btn-sm btn-primary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar" asp-route-weekStart="@Model.WeeklyTable.WeekStart.ToString("yyyy-MM-dd")" asp-route-doctorId="@Model.SelectedDoctorId">Lịch tuần</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="list" asp-route-weekStart="@Model.WeeklyTable.WeekStart.ToString("yyyy-MM-dd")" asp-route-doctorId="@Model.SelectedDoctorId">Danh sách sửa</a>
+    </div>
 </div>
 
 @if (TempData["InfoMessage"] is string message)
 {
     <div class="alert alert-info">@message</div>
 }
+
+<form asp-controller="WorkShifts" asp-action="Generate" method="post" class="card panel-card mb-3">
+    @Html.AntiForgeryToken()
+    <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <div class="fw-semibold fs-5">Phân lịch bác sĩ</div>
+                <div class="text-secondary">Chọn bác sĩ, phòng và tick đúng ca cho từng thứ trong tuần.</div>
+            </div>
+            <button class="btn btn-primary" type="submit">Sinh lịch làm việc</button>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">Bác sĩ</label>
+                <select class="form-select js-doctor-select" name="DoctorId" data-department-target="#generate-department" required>
+                    <option value="">Chọn bác sĩ</option>
+                    @foreach (var doctor in Model.Doctors)
+                    {
+                        <option value="@doctor.Value" data-department="@doctor.Group" selected="@(string.Equals(Model.SelectedDoctorId, doctor.Value, StringComparison.OrdinalIgnoreCase))">@doctor.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">Khoa</label>
+                <input type="hidden" name="DepartmentId" id="generate-department-hidden" />
+                <select class="form-select js-department-select" id="generate-department" data-room-target="#generate-room" data-hidden-target="#generate-department-hidden" required disabled>
+                    <option value="">Chọn bác sĩ trước</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department.Value">@department.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">Phòng</label>
+                <select class="form-select js-room-select" id="generate-room" name="RoomNumber" required disabled>
+                    <option value="">Chọn khoa trước</option>
+                    @foreach (var group in Model.DepartmentRooms)
+                    {
+                        foreach (var room in group.Value)
+                        {
+                            <option value="@room" data-department="@group.Key">@room</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">Bắt đầu từ</label>
+                <input class="form-control" name="StartDate" type="date" value="@Model.GenerateForm.StartDate.ToString("yyyy-MM-dd")" required />
+            </div>
+            <div class="col-lg-1 col-md-6">
+                <label class="form-label">Số tuần</label>
+                <input class="form-control" name="WeeksAhead" type="number" min="1" max="8" value="@Model.GenerateForm.WeeksAhead" required />
+            </div>
+            <div class="col-lg-1 col-md-6">
+                <label class="form-label">Slot</label>
+                <input class="form-control" name="AvailableSlots" type="number" min="1" max="100" value="@Model.GenerateForm.AvailableSlots" required />
+            </div>
+        </div>
+
+        <div class="table-responsive mt-3">
+            <table class="table table-bordered align-middle mb-0">
+                <thead>
+                    <tr class="text-secondary">
+                        <th style="width: 180px;">Thứ trong tuần</th>
+                        @foreach (var shift in Model.Shifts)
+                        {
+                            <th class="text-center">@shift.Text</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var day in WeekDays())
+                    {
+                        <tr>
+                            <td class="fw-semibold">@day.Label</td>
+                            @foreach (var shift in Model.Shifts)
+                            {
+                                var inputId = $"day-shift-{day.Value}-{shift.Value}";
+                                <td class="text-center">
+                                    <input class="btn-check" type="checkbox" name="DayShiftSelections" id="@inputId" value="@($"{day.Value}|{shift.Value}")" />
+                                    <label class="btn btn-sm btn-outline-primary w-100" for="@inputId">Chọn</label>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
 
 <div class="row g-3 mb-3">
     <div class="col-sm-6 col-xl-3">
@@ -39,13 +134,13 @@
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
             <div>
                 <div class="fw-semibold text-uppercase">Lịch làm việc bác sĩ từ ngày @Model.WeeklyTable.WeekStart.ToString("dd/MM/yyyy") đến ngày @Model.WeeklyTable.WeekEnd.ToString("dd/MM/yyyy")</div>
-                <div class="text-secondary small">Bảng tuần dùng để kiểm tra ca chuẩn và tình trạng phân bổ. Staff thực hiện phân công/sửa lịch chi tiết ở màn riêng.</div>
+                <div class="text-secondary small">Bảng tuần theo phòng khám. Bấm “Danh sách sửa” để chỉnh từng lịch đã tạo.</div>
             </div>
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <div class="btn-group btn-group-sm" role="group" aria-label="Chọn tuần">
-                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-weekStart="@previousWeek.ToString("yyyy-MM-dd")">Tuần trước</a>
-                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index">Tuần này</a>
-                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-weekStart="@nextWeek.ToString("yyyy-MM-dd")">Tuần sau</a>
+                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar" asp-route-weekStart="@previousWeek.ToString("yyyy-MM-dd")" asp-route-doctorId="@Model.SelectedDoctorId">Tuần trước</a>
+                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar" asp-route-doctorId="@Model.SelectedDoctorId">Tuần này</a>
+                    <a class="btn btn-outline-secondary" asp-controller="WorkShifts" asp-action="Index" asp-route-mode="calendar" asp-route-weekStart="@nextWeek.ToString("yyyy-MM-dd")" asp-route-doctorId="@Model.SelectedDoctorId">Tuần sau</a>
                 </div>
                 <div class="admin-legend">
                     <span class="admin-legend__item"><span class="admin-legend__dot admin-legend__dot--morning"></span>Ca sáng</span>
@@ -117,11 +212,143 @@
     </div>
 </div>
 
-<div class="alert alert-light border mb-0">
-    Staff phân công lịch bác sĩ tại <a asp-controller="DoctorSchedules" asp-action="Index">Phân công lịch bác sĩ</a>. Màn này không dùng để phân công bác sĩ theo ngày.
-</div>
+@if (string.Equals(Model.Mode, "list", StringComparison.OrdinalIgnoreCase))
+{
+    <div class="card panel-card mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-3">Danh sách sửa lịch đã tạo</div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 admin-table">
+                    <thead>
+                        <tr class="text-secondary">
+                            <th>Ngày</th>
+                            <th>Bác sĩ</th>
+                            <th>Khoa</th>
+                            <th>Phòng</th>
+                            <th>Ca</th>
+                            <th>Slot còn</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end">Cập nhật</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.Schedules.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-secondary py-4">Chưa có lịch để sửa.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Schedules)
+                        {
+                            <tr>
+                                <td><div class="fw-semibold">@item.Date.ToString("dd/MM/yyyy")</div><div class="text-secondary small">@DayText(item.Date.DayOfWeek)</div></td>
+                                <td>@item.DoctorName</td>
+                                <td class="text-secondary">@ValueOrDash(item.DepartmentName)</td>
+                                <td>@ValueOrDash(item.RoomNumber)</td>
+                                <td><div>@ValueOrDash(item.ShiftName)</div><div class="text-secondary small">@ValueOrDash(item.ShiftTime)</div></td>
+                                <td>@item.AvailableSlots/@item.MaxSlots</td>
+                                <td><span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary")">@(item.IsActive ? "Có thể đặt" : "Tạm ngưng")</span></td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" asp-controller="WorkShifts" asp-action="EditSchedule" asp-route-id="@item.DocumentId">Sửa đầy đủ</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    (() => {
+        function renderRooms(select) {
+            const targetSelector = select.dataset.roomTarget;
+            const roomSelect = document.querySelector(targetSelector);
+            if (!roomSelect) return;
+
+            const allOptions = Array.from(roomSelect.querySelectorAll("option[data-department]"));
+            let visibleCount = 0;
+
+            if (!select.value) {
+                roomSelect.value = "";
+                roomSelect.options[0].textContent = "Chọn khoa trước";
+                allOptions.forEach(option => option.hidden = true);
+                roomSelect.disabled = true;
+                return;
+            }
+
+            allOptions.forEach(option => {
+                const visible = option.dataset.department === select.value;
+                option.hidden = !visible;
+                if (visible) visibleCount++;
+            });
+
+            roomSelect.value = "";
+            roomSelect.options[0].textContent = visibleCount > 0 ? "Chọn phòng" : "Khoa này chưa có phòng";
+            roomSelect.disabled = visibleCount === 0;
+        }
+
+        function syncDepartmentHidden(select) {
+            const hiddenInput = document.querySelector(select.dataset.hiddenTarget);
+            if (hiddenInput) hiddenInput.value = select.value || "";
+        }
+
+        function syncDoctorDepartment(select) {
+            const departmentSelect = document.querySelector(select.dataset.departmentTarget);
+            if (!departmentSelect) return;
+
+            const hiddenInput = document.querySelector(departmentSelect.dataset.hiddenTarget);
+            const selectedOption = select.selectedOptions[0];
+            const departmentId = selectedOption?.dataset.department || "";
+
+            departmentSelect.value = departmentId;
+            departmentSelect.disabled = Boolean(departmentId);
+            if (hiddenInput) hiddenInput.value = departmentId;
+            renderRooms(departmentSelect);
+        }
+
+        document.querySelectorAll(".js-department-select").forEach(select => {
+            select.addEventListener("change", () => {
+                syncDepartmentHidden(select);
+                renderRooms(select);
+            });
+            syncDepartmentHidden(select);
+            renderRooms(select);
+        });
+
+        document.querySelectorAll(".js-doctor-select").forEach(select => {
+            select.addEventListener("change", () => syncDoctorDepartment(select));
+            syncDoctorDepartment(select);
+        });
+    })();
+</script>
 
 @functions {
+    private static IEnumerable<(DayOfWeek Value, string Label)> WeekDays()
+    {
+        yield return (DayOfWeek.Monday, "Thứ 2");
+        yield return (DayOfWeek.Tuesday, "Thứ 3");
+        yield return (DayOfWeek.Wednesday, "Thứ 4");
+        yield return (DayOfWeek.Thursday, "Thứ 5");
+        yield return (DayOfWeek.Friday, "Thứ 6");
+        yield return (DayOfWeek.Saturday, "Thứ 7");
+        yield return (DayOfWeek.Sunday, "Chủ nhật");
+    }
+
+    private static string DayText(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Thứ 2",
+        DayOfWeek.Tuesday => "Thứ 3",
+        DayOfWeek.Wednesday => "Thứ 4",
+        DayOfWeek.Thursday => "Thứ 5",
+        DayOfWeek.Friday => "Thứ 6",
+        DayOfWeek.Saturday => "Thứ 7",
+        DayOfWeek.Sunday => "Chủ nhật",
+        _ => "-"
+    };
+
     private static string WeekShiftClass(Web_Admin_Booking_App.Models.WeeklyScheduleCellItemViewModel item)
     {
         if (!item.IsActive) return "is-off";

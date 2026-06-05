@@ -1,0 +1,268 @@
+@model Web_Admin_Booking_App.Models.DoctorEditViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Sửa hồ sơ bác sĩ";
+    ViewData["PageTitle"] = "Sửa hồ sơ bác sĩ";
+}
+
+<section class="admin-form-page">
+    <div class="admin-page-header admin-page-header--compact">
+        <div>
+            <div class="admin-page-kicker">Bác sĩ</div>
+            <h1 class="admin-page-title">Sửa hồ sơ bác sĩ</h1>
+            <p class="admin-page-subtitle">Cập nhật thông tin cá nhân, chuyên môn và trạng thái hiển thị của bác sĩ.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="admin-action-btn" asp-controller="Doctors" asp-action="Details" asp-route-id="@Model.DocumentId">Xem hồ sơ</a>
+            <a class="admin-action-btn" asp-controller="Doctors" asp-action="Index">Quay lại</a>
+        </div>
+    </div>
+
+    <form asp-action="Edit" method="post" enctype="multipart/form-data" id="doctorEditForm">
+        @Html.AntiForgeryToken()
+        <input asp-for="DocumentId" type="hidden" />
+        <input asp-for="UserId" type="hidden" />
+        <input asp-for="Email" type="hidden" />
+        <input asp-for="AvatarUrl" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 rounded-4"></div>
+
+        <div class="admin-form-shell">
+            <div class="admin-form-main">
+                <section class="admin-form-card section-accent--account">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Thông tin tài khoản</h2>
+                        <p class="admin-form-card__subtitle">Email đăng nhập thuộc Firebase Auth nên chỉ hiển thị để đối chiếu.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="FullName" class="form-label"></label>
+                                <input asp-for="FullName" class="form-control" data-preview-name />
+                                <span asp-validation-for="FullName" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Email" class="form-label"></label>
+                                <input value="@Model.Email" class="form-control" disabled />
+                            </div>
+                            <div>
+                                <label asp-for="Phone" class="form-label"></label>
+                                <input asp-for="Phone" class="form-control" inputmode="numeric" maxlength="10" />
+                                <span asp-validation-for="Phone" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Cccd" class="form-label"></label>
+                                <input asp-for="Cccd" class="form-control" inputmode="numeric" maxlength="12" />
+                                <span asp-validation-for="Cccd" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="AvatarFile" class="form-label"></label>
+                                <input asp-for="AvatarFile" class="form-control" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                                <span asp-validation-for="AvatarFile" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Gender" class="form-label"></label>
+                                <select asp-for="Gender" class="form-select">
+                                    <option value="">Chưa chọn</option>
+                                    <option value="male">Nam</option>
+                                    <option value="female">Nữ</option>
+                                    <option value="other">Khác</option>
+                                </select>
+                                <span asp-validation-for="Gender" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="DateOfBirth" class="form-label"></label>
+                                <input asp-for="DateOfBirth" class="form-control" />
+                                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="UserStatus" class="form-label"></label>
+                                <select asp-for="UserStatus" class="form-select">
+                                    <option value="active">Đang hoạt động</option>
+                                    <option value="pending">Chờ kích hoạt</option>
+                                    <option value="blocked">Đã khóa</option>
+                                </select>
+                                <span asp-validation-for="UserStatus" class="text-danger"></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check">
+                                    <input asp-for="EmailVerified" class="form-check-input" />
+                                    <label asp-for="EmailVerified" class="form-check-label"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-card section-accent--professional">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Hồ sơ chuyên môn</h2>
+                        <p class="admin-form-card__subtitle">Các trường này được lưu trong Doctors và app dùng để hiển thị bác sĩ.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="DepartmentId" class="form-label"></label>
+                                <select asp-for="DepartmentId" class="form-select">
+                                    <option value="">Chọn khoa</option>
+                                    @foreach (var department in Model.Departments)
+                                    {
+                                        <option value="@department.Value">@department.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="DepartmentId" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Specialization" class="form-label"></label>
+                                <input asp-for="Specialization" class="form-control" />
+                                <span asp-validation-for="Specialization" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="LicenseNumber" class="form-label"></label>
+                                <input asp-for="LicenseNumber" class="form-control" />
+                                <span asp-validation-for="LicenseNumber" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Degree" class="form-label"></label>
+                                <input asp-for="Degree" class="form-control" />
+                                <span asp-validation-for="Degree" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="YearsOfExperience" class="form-label"></label>
+                                <input asp-for="YearsOfExperience" class="form-control" type="number" min="0" max="80" />
+                                <span asp-validation-for="YearsOfExperience" class="text-danger"></span>
+                            </div>
+                            <div>
+                                <label asp-for="ConsultationFee" class="form-label"></label>
+                                <input asp-for="ConsultationFee" class="form-control js-money-input" type="text" inputmode="numeric" />
+                                <span asp-validation-for="ConsultationFee" class="text-danger"></span>
+                            </div>
+                            <div class="is-full">
+                                <label asp-for="Biography" class="form-label"></label>
+                                <textarea asp-for="Biography" class="form-control" rows="4"></textarea>
+                                <span asp-validation-for="Biography" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-card section-accent--admin">
+                    <div class="admin-form-card__header">
+                        <h2 class="admin-form-card__title">Thiết lập quản trị</h2>
+                        <p class="admin-form-card__subtitle">Điều khiển việc hiển thị và trạng thái duyệt của hồ sơ bác sĩ.</p>
+                    </div>
+                    <div class="admin-form-card__body">
+                        <div class="admin-form-grid">
+                            <div>
+                                <label asp-for="VerificationStatus" class="form-label"></label>
+                                <select asp-for="VerificationStatus" class="form-select">
+                                    <option value="pending">Chờ duyệt</option>
+                                    <option value="verified">Đã xác minh</option>
+                                    <option value="rejected">Từ chối</option>
+                                </select>
+                                <span asp-validation-for="VerificationStatus" class="text-danger"></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check">
+                                    <input asp-for="IsActive" class="form-check-input" />
+                                    <label asp-for="IsActive" class="form-check-label"></label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check">
+                                    <input asp-for="IsFeatured" class="form-check-input" />
+                                    <label asp-for="IsFeatured" class="form-check-label"></label>
+                                </div>
+                            </div>
+                            <div>
+                                <label asp-for="FeaturedRank" class="form-label"></label>
+                                <input asp-for="FeaturedRank" class="form-control" type="number" min="1" max="999" />
+                                <span asp-validation-for="FeaturedRank" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="admin-form-actions">
+                    <a class="btn btn-outline-secondary px-4" asp-controller="Doctors" asp-action="Details" asp-route-id="@Model.DocumentId">Hủy</a>
+                    <button type="submit" class="btn btn-primary px-4">Lưu thay đổi</button>
+                </div>
+            </div>
+
+            <aside class="admin-form-aside">
+                <div class="admin-help-card compact-help-card">
+                    <div class="admin-help-card__avatar" data-preview-avatar>
+                        @if (!string.IsNullOrWhiteSpace(Model.AvatarUrl))
+                        {
+                            <img src="@Model.AvatarUrl" alt="@Model.FullName" />
+                        }
+                        else
+                        {
+                            @Initials(Model.FullName)
+                        }
+                    </div>
+                    <h2 class="h5 fw-bold mb-1" data-preview-title>@(string.IsNullOrWhiteSpace(Model.FullName) ? "Hồ sơ bác sĩ" : Model.FullName)</h2>
+                    <div class="text-secondary text-break-soft">@Model.Email</div>
+                    <ul class="admin-help-list compact-tip-list">
+                        <li>Email đăng nhập không đổi tại đây.</li>
+                        <li>Nếu chọn ảnh mới, hệ thống sẽ thay avatar hiện tại.</li>
+                        <li>Khoa của bác sĩ ảnh hưởng đến lịch làm việc và app đặt lịch.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const formatMoney = value => {
+                const digits = (value || "").replace(/\D/g, "");
+                return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            };
+
+            document.querySelectorAll(".js-money-input").forEach(input => {
+                input.value = formatMoney(input.value);
+                input.addEventListener("input", () => input.value = formatMoney(input.value));
+                input.form?.addEventListener("submit", () => input.value = (input.value || "").replace(/\D/g, ""));
+            });
+
+            const featuredCheckbox = document.querySelector("#IsFeatured");
+            const featuredRank = document.querySelector("#FeaturedRank");
+            const syncFeaturedRank = () => {
+                if (!featuredCheckbox || !featuredRank) return;
+                featuredRank.disabled = !featuredCheckbox.checked;
+                if (!featuredCheckbox.checked) featuredRank.value = "";
+            };
+            featuredCheckbox?.addEventListener("change", syncFeaturedRank);
+            syncFeaturedRank();
+
+            const nameInput = document.querySelector("[data-preview-name]");
+            const avatar = document.querySelector("[data-preview-avatar]");
+            const title = document.querySelector("[data-preview-title]");
+            const initials = value => {
+                const parts = (value || "").trim().split(/\s+/).filter(Boolean);
+                if (parts.length === 0) return "BS";
+                if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            };
+            const syncPreview = () => {
+                if (avatar && !avatar.querySelector("img")) avatar.textContent = initials(nameInput?.value);
+                if (title) title.textContent = nameInput?.value || "Hồ sơ bác sĩ";
+            };
+            nameInput?.addEventListener("input", syncPreview);
+            syncPreview();
+        })();
+    </script>
+}
+
+@functions {
+    private static string Initials(string name)
+    {
+        var parts = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "BS";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

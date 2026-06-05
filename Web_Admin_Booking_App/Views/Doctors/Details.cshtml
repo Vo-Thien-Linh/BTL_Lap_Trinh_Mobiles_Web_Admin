@@ -32,6 +32,7 @@
             </div>
         </div>
         <div class="profile-hero__actions">
+            <a class="btn btn-primary" asp-controller="Doctors" asp-action="Edit" asp-route-id="@Model.DocumentId">Sửa hồ sơ</a>
             <form asp-controller="Doctors" asp-action="Approve" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@Model.DocumentId" />

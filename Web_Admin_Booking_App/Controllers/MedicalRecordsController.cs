@@ -43,19 +43,12 @@ public class MedicalRecordsController : Controller
         return View(model);
     }
 
-    public IActionResult Details(string id)
+    public async Task<IActionResult> Details(string id, CancellationToken cancellationToken = default)
     {
-        var model = new MedicalRecordDetailsViewModel
-        {
-            Id = id,
-            RecordCode = $"BA-{id}",
-            PatientName = "Chưa cập nhật",
-            PatientPhone = "",
-            DoctorName = "Chưa cập nhật",
-            SpecialtyName = "Chưa cập nhật",
-            CreatedAt = DateTime.Now,
-            Status = MedicalRecordStatus.Pending
-        };
+        if (string.IsNullOrWhiteSpace(id)) return NotFound();
+
+        var model = await _dataService.GetMedicalRecordDetailsAsync(id, cancellationToken);
+        if (model == null) return NotFound();
 
         return View(model);
     }
