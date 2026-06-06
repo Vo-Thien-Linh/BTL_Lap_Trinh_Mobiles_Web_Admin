@@ -93,6 +93,29 @@ public sealed class PayOsService
             responseData?.Status);
     }
 
+    public PayOsConfigCheck GetConfigCheck()
+    {
+        return new PayOsConfigCheck(
+            HasClientId: !string.IsNullOrWhiteSpace(_settings.ClientId),
+            HasApiKey: !string.IsNullOrWhiteSpace(_settings.ApiKey),
+            HasChecksumKey: !string.IsNullOrWhiteSpace(_settings.ChecksumKey),
+            HasReturnUrl: !string.IsNullOrWhiteSpace(_settings.ReturnUrl),
+            HasCancelUrl: !string.IsNullOrWhiteSpace(_settings.CancelUrl),
+            ReturnUrl: _settings.ReturnUrl ?? string.Empty,
+            CancelUrl: _settings.CancelUrl ?? string.Empty,
+            WebhookPath: "/api/payments/payos/webhook");
+    }
+
+    public bool HasCreateLinkConfiguration()
+    {
+        var check = GetConfigCheck();
+        return check.HasClientId &&
+               check.HasApiKey &&
+               check.HasChecksumKey &&
+               check.HasReturnUrl &&
+               check.HasCancelUrl;
+    }
+
     public bool VerifyWebhook(PayOsWebhookRequest webhook)
     {
         ValidateChecksumKey();
@@ -157,9 +180,26 @@ public sealed class PayOsService
 
     private static string BuildDescription(PaymentRecord payment)
     {
-        var code = string.IsNullOrWhiteSpace(payment.PaymentCode) ? payment.Id : payment.PaymentCode;
+        var code = FirstNonEmpty(
+            payment.PaymentCode,
+            payment.InvoiceCode,
+            payment.AppointmentCode,
+            payment.Id);
         var cleaned = new string(code.Where(char.IsLetterOrDigit).Take(18).ToArray());
         return $"PAY {cleaned}".Trim();
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return "PAYMENT";
     }
 
     private static string FormatDecimal(decimal? value)
@@ -174,6 +214,16 @@ public sealed record PayOsPaymentLinkResult(
     string CheckoutUrl,
     string? PaymentLinkId,
     string? Status);
+
+public sealed record PayOsConfigCheck(
+    bool HasClientId,
+    bool HasApiKey,
+    bool HasChecksumKey,
+    bool HasReturnUrl,
+    bool HasCancelUrl,
+    string ReturnUrl,
+    string CancelUrl,
+    string WebhookPath);
 
 internal sealed class PayOsCreatePaymentResponse
 {

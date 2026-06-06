@@ -79,6 +79,13 @@ public sealed class PaymentsApiController : ControllerBase
             });
         }
 
+        if (!_payOsService.HasCreateLinkConfiguration())
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { message = "Máy chủ chưa cấu hình payOS." });
+        }
+
         var orderCode = payment.GatewayOrderCode ?? GenerateOrderCode();
 
         try
@@ -118,28 +125,56 @@ public sealed class PaymentsApiController : ControllerBase
         }
     }
 
+    [HttpGet("payos/config-check")]
+    public IActionResult PayOsConfigCheck()
+    {
+        return Ok(_payOsService.GetConfigCheck());
+    }
+
     [HttpPost("payos/webhook")]
     public async Task<IActionResult> PayOsWebhook(
         [FromBody] PayOsWebhookRequest webhook,
         CancellationToken cancellationToken)
     {
-        if (!_payOsService.VerifyWebhook(webhook))
+        try
         {
-            return BadRequest(new { message = "Webhook payOS không hợp lệ." });
+            if (!_payOsService.VerifyWebhook(webhook))
+            {
+                return BadRequest(new { message = "Webhook payOS không hợp lệ." });
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "payOS webhook cannot be verified because configuration is missing.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { message = "Máy chủ chưa cấu hình payOS." });
         }
 
         var data = webhook.Data;
-        if (data?.OrderCode is null)
+        if (data is null ||
+            (data.OrderCode is null && string.IsNullOrWhiteSpace(data.PaymentLinkId)))
         {
-            return BadRequest(new { message = "Webhook payOS thiếu orderCode." });
+            return BadRequest(new { message = "Webhook payOS thiếu orderCode hoặc paymentLinkId." });
         }
 
-        var payment = await _dataService.FindPaymentRecordByGatewayOrderCodeAsync(data.OrderCode.Value, cancellationToken);
+        PaymentRecord? payment = null;
+        if (data.OrderCode.HasValue)
+        {
+            payment = await _dataService.FindPaymentRecordByGatewayOrderCodeAsync(data.OrderCode.Value, cancellationToken);
+        }
+
+        if (payment is null && !string.IsNullOrWhiteSpace(data.PaymentLinkId))
+        {
+            payment = await _dataService.FindPaymentRecordByGatewayPaymentLinkIdAsync(data.PaymentLinkId, cancellationToken);
+        }
+
         if (payment is null)
         {
             _logger.LogWarning(
-                "payOS webhook payment not found for orderCode {OrderCode}. Webhook ignored.",
-                data.OrderCode.Value);
+                "payOS webhook payment not found for orderCode {OrderCode}, paymentLinkId {PaymentLinkId}. Webhook ignored.",
+                data.OrderCode,
+                data.PaymentLinkId);
 
             return Ok(new { code = "00", message = "Webhook received. Payment not found, ignored." });
         }
@@ -168,7 +203,7 @@ public sealed class PaymentsApiController : ControllerBase
             ["paymentMethod"] = "payos",
             ["method"] = "payos",
             ["gatewayProvider"] = "payos",
-            ["gatewayOrderCode"] = data.OrderCode.Value,
+            ["gatewayOrderCode"] = data.OrderCode ?? payment.GatewayOrderCode,
             ["gatewayTransactionId"] = data.Reference,
             ["gatewayPaymentLinkId"] = data.PaymentLinkId,
             ["updatedAt"] = FieldValue.ServerTimestamp

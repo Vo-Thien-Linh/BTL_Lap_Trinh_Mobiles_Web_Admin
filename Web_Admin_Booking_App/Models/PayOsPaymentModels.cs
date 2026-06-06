@@ -12,12 +12,15 @@ public sealed class PaymentRecord
     public string? PatientUid { get; set; }
     public decimal Amount { get; set; }
     public string PaymentCode { get; set; } = string.Empty;
+    public string InvoiceCode { get; set; } = string.Empty;
+    public string AppointmentCode { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = string.Empty;
     public string Method { get; set; } = string.Empty;
     public string? GatewayProvider { get; set; }
     public long? GatewayOrderCode { get; set; }
+    public string? GatewayPaymentLinkId { get; set; }
     public string? CheckoutUrl { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

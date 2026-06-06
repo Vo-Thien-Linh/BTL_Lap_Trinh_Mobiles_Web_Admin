@@ -1202,6 +1202,32 @@ public sealed class FirestoreAdminDataService
         return null;
     }
 
+    public async Task<PaymentRecord?> FindPaymentRecordByGatewayPaymentLinkIdAsync(
+        string paymentLinkId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(paymentLinkId)) return null;
+
+        var collections = GetPaymentCollectionNames();
+        foreach (var collectionName in collections)
+        {
+            foreach (var fieldName in new[] { "gatewayPaymentLinkId", "paymentLinkId" })
+            {
+                var snapshot = await _firestore.Collection(collectionName)
+                    .WhereEqualTo(fieldName, paymentLinkId.Trim())
+                    .Limit(1)
+                    .GetSnapshotAsync(cancellationToken);
+                var doc = snapshot.Documents.FirstOrDefault(x => x.Exists);
+                if (doc is not null)
+                {
+                    return MapPaymentRecord(doc);
+                }
+            }
+        }
+
+        return null;
+    }
+
     public async Task UpdatePaymentAsync(
         string collectionName,
         string documentId,
@@ -1636,6 +1662,7 @@ public sealed class FirestoreAdminDataService
     {
         var amount = GetDecimal(
             doc,
+            "patientPayAmount",
             "finalAmount",
             "amountDue",
             "payableAmount",
@@ -1656,12 +1683,15 @@ public sealed class FirestoreAdminDataService
             PatientUid = GetString(doc, "patientUid", "PatientUid"),
             Amount = amount,
             PaymentCode = GetString(doc, "paymentCode", "invoiceCode", "code", "id", "receiptCode") ?? doc.Id,
+            InvoiceCode = GetString(doc, "invoiceCode", "receiptCode") ?? string.Empty,
+            AppointmentCode = GetString(doc, "appointmentCode", "bookingCode", "scheduleCode") ?? string.Empty,
             PaymentStatus = GetString(doc, "paymentStatus", "PaymentStatus", "payment_state") ?? string.Empty,
             Status = GetString(doc, "status", "Status") ?? string.Empty,
             PaymentMethod = GetString(doc, "paymentMethod", "PaymentMethod") ?? string.Empty,
             Method = GetString(doc, "method", "Method") ?? string.Empty,
             GatewayProvider = GetString(doc, "gatewayProvider", "GatewayProvider"),
             GatewayOrderCode = GetLong(doc, "gatewayOrderCode", "orderCode"),
+            GatewayPaymentLinkId = GetString(doc, "gatewayPaymentLinkId", "paymentLinkId"),
             CheckoutUrl = GetString(doc, "checkoutUrl", "CheckoutUrl", "payosCheckoutUrl"),
             CreatedAt = GetDateTime(doc, "createdAt", "CreatedAt"),
             UpdatedAt = GetDateTime(doc, "updatedAt", "UpdatedAt"),
