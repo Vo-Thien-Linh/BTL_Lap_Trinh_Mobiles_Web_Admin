@@ -11,12 +11,12 @@ namespace Web_Admin_Booking_App.Controllers;
 public class AuthController : Controller
 {
     private readonly FirebaseAuthRestService _authService;
-    private readonly FirebaseAdminUserService _adminUserService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public AuthController(FirebaseAuthRestService authService, FirebaseAdminUserService adminUserService)
+    public AuthController(FirebaseAuthRestService authService, IServiceProvider serviceProvider)
     {
         _authService = authService;
-        _adminUserService = adminUserService;
+        _serviceProvider = serviceProvider;
     }
 
     [AllowAnonymous]
@@ -47,7 +47,8 @@ public class AuthController : Controller
         try
         {
             var authResult = await _authService.SignInWithPasswordAsync(model.Email, model.Password);
-            var adminUser = await _adminUserService.GetAdminUserAsync(authResult.LocalId);
+            var adminUserService = _serviceProvider.GetRequiredService<FirebaseAdminUserService>();
+            var adminUser = await adminUserService.GetAdminUserAsync(authResult.LocalId);
 
             if (adminUser == null ||
                 !IsAllowedWebRole(adminUser.Role) ||
