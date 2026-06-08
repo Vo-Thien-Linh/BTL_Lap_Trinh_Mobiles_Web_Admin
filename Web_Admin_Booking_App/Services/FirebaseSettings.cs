@@ -9,6 +9,7 @@ public sealed class FirebaseSettings
 
     public string ServiceAccountPath { get; set; } = string.Empty;
     public string ServiceAccountJson { get; set; } = string.Empty;
+    public string ServiceAccountJsonBase64 { get; set; } = string.Empty;
 
     public string[] UserCollections { get; set; } = ["users"];
     public string[] DoctorCollections { get; set; } = ["Doctors"];

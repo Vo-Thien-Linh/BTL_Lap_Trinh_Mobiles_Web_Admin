@@ -1,6 +1,7 @@
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace Web_Admin_Booking_App.Services;
 
@@ -31,7 +32,12 @@ public sealed class FirestoreDbFactory
             ProjectId = _settings.ProjectId,
         };
 
-        if (!string.IsNullOrWhiteSpace(_settings.ServiceAccountJson))
+        if (!string.IsNullOrWhiteSpace(_settings.ServiceAccountJsonBase64))
+        {
+            var serviceAccountJson = DecodeServiceAccountJsonBase64(_settings.ServiceAccountJsonBase64);
+            builder.Credential = GoogleCredential.FromJson(serviceAccountJson);
+        }
+        else if (!string.IsNullOrWhiteSpace(_settings.ServiceAccountJson))
         {
             builder.Credential = GoogleCredential.FromJson(_settings.ServiceAccountJson);
         }
@@ -55,5 +61,21 @@ public sealed class FirestoreDbFactory
         }
 
         return builder.Build();
+    }
+
+    private static string DecodeServiceAccountJsonBase64(string value)
+    {
+        try
+        {
+            var normalized = value.Trim();
+            var bytes = Convert.FromBase64String(normalized);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        catch (FormatException ex)
+        {
+            throw new InvalidOperationException(
+                "Firebase:ServiceAccountJsonBase64 không đúng định dạng Base64. Hãy mã hóa toàn bộ file service account JSON, không mã hóa riêng private_key.",
+                ex);
+        }
     }
 }
